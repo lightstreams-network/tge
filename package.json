@@ -1,0 +1,17 @@
+{
+  "name": "lightstreams-tge",
+  "version": "1.0.0",
+  "description": "Lightstreams tokens distribution smart contract",
+  "scripts": {
+    "test-ganache": "truffle test --network=ganache"
+  },
+  "author": "Lukas Lukac",
+  "bugs": {
+    "url": "https://github.com/lightstreams-network/tge/issues"
+  },
+  "homepage": "https://github.com/lightstreams-network/tge#readme",
+  "dependencies": {
+    "ganache-cli": "^6.4.1",
+    "truffle": "^5.0.9"
+  }
+}
