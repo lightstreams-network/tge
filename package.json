@@ -3,14 +3,16 @@
   "version": "1.0.0",
   "description": "Lightstreams tokens distribution smart contract",
   "scripts": {
-    "test-ganache": "truffle test --network=ganache"
+    "test-ganache": "truffle test --reset --network=ganache"
   },
-  "author": "Lukas Lukac",
+  "author": "Lukas Lukac / Gabriel Garrido / Kyokan",
   "bugs": {
     "url": "https://github.com/lightstreams-network/tge/issues"
   },
   "homepage": "https://github.com/lightstreams-network/tge#readme",
   "dependencies": {
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
     "ganache-cli": "^6.4.1",
     "truffle": "^5.0.9"
   }
