@@ -57,12 +57,12 @@ const VI = {
   startTimestamp: 0,
   endTimestamp: 1,
   lockPeriod: 2,
-  initialAmount: 3,
-  initialAmountClaimed: 4,
-  initialBalance: 5,
-  initialBonus: 6,
+  balanceInitial: 3,
+  balanceClaimed: 4,
+  balanceRemaining: 5,
+  bonusInitial: 6,
   bonusClaimed: 7,
-  bonusBalance: 8,
+  bonusRemaining: 8,
   revocable: 9,
   revoked: 10
 };

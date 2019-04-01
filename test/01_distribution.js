@@ -68,7 +68,7 @@ contract('Distribution', (accounts) => {
     await instance.scheduleProjectVesting(TEAM_MEMBER_ACCOUNT, TEAM_SUPPLY_ID, {from: OWNER_ACCOUNT, value: amount});
     const teamMemberAllocationData = await instance.vestings(TEAM_MEMBER_ACCOUNT);
     const teamSupplyAfter = await instance.AVAILABLE_TEAM_SUPPLY.call();
-    const teamMemberAllocation = teamMemberAllocationData[VI.initialAmount];
+    const teamMemberAllocation = teamMemberAllocationData[VI.balanceInitial];
     const totalAllocated = await instance.totalAllocated.call();
 
     assert.equal(AVAILABLE_TEAM_SUPPLY, wei2Ether(teamSupplyBefore));
@@ -108,7 +108,7 @@ contract('Distribution', (accounts) => {
     const seedContributorAllocationData = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
     const seedContributorSupplyAfter = await instance.AVAILABLE_SEED_CONTRIBUTORS_SUPPLY.call();
     const totalAllocatedAfter = await instance.totalAllocated.call();
-    const seedContributorAllocation = seedContributorAllocationData[VI.initialAmount];
+    const seedContributorAllocation = seedContributorAllocationData[VI.balanceInitial];
 
     assert.equal(AVAILABLE_SEED_CONTRIBUTORS_SUPPLY, wei2Ether(seedContributorSupplyBefore));
     assert.equal(seedContributorAllocation.toString(), wei.toString());
@@ -261,7 +261,6 @@ contract('Distribution', (accounts) => {
 
     await timeTravel(30 * 3); // Travel 3 months into the future for testing
     const vestingBefore = await instance.vestings(TEAM_MEMBER_ACCOUNT);
-    const vestingBeforeInitialBalance = vestingBefore[VI.initialBalance];
     const memberBalanceBefore = toBN(await web3.eth.getBalance(TEAM_MEMBER_ACCOUNT));
 
     const tx = await instance.release(TEAM_MEMBER_ACCOUNT, {from: TEAM_MEMBER_ACCOUNT});
@@ -273,8 +272,9 @@ contract('Distribution', (accounts) => {
     // team member allocation was originally 240 if 3 months pass they
     // should be allowed to have 30 PHT in their wallet after a release
     assert.equal(memberBalanceAfter.toString(), memberBalanceBefore.add(pht2wei('30').sub(txCost)).toString());
-    assert.equal(vestingAfter[VI.initialBalance].toString(), vestingBeforeInitialBalance.sub(pht2wei('30')).toString());
-    assert.equal(vestingAfter[VI.initialAmountClaimed].toString(), pht2wei('30').toString());
+    assert.equal(vestingAfter[VI.balanceInitial].toString(), vestingBefore[VI.balanceInitial].toString());
+    assert.equal(vestingAfter[VI.balanceRemaining].toString(), vestingBefore[VI.balanceRemaining].sub(pht2wei('30')).toString());
+    assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei('30').toString());
   });
 
   // it('The seed contributor can release their vested amount', async ()=> {
@@ -291,12 +291,12 @@ contract('Distribution', (accounts) => {
   //
   //   const allocationDataAfter = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
   //   const allocationBalanceAfterRelease = (allocationDataAfter[ALLOCATION.balance]);
-  //   const amountClaimedAfterRelease = (allocationDataAfter[ALLOCATION.amountClaimed]);
+  //   const balanceClaimedAfterRelease = (allocationDataAfter[ALLOCATION.balanceClaimed]);
   //
   //   // seed contributor allocation was originally 500 PTH if 3 months pass they
   //   // should be allowed to withdraw 300 PTH
   //   assert.equal(300, accountBalance, 'The seed contributor\'s ballance in their account is wrong');
-  //   assert.equal(300, amountClaimedAfterRelease, 'The seed contributor\'s ballance in their allocation after releasing is wrong');
+  //   assert.equal(300, balanceClaimedAfterRelease, 'The seed contributor\'s ballance in their allocation after releasing is wrong');
   //   assert.equal(allocationBalanceBeforeRelease - accountBalance, allocationBalanceAfterRelease, 'The amount the contributor has in their account and allcation after is not matching');
   //
   // });
@@ -315,12 +315,12 @@ contract('Distribution', (accounts) => {
   //
   //   const allocationDataAfter = await instance.vestings(FOUNDER_ACCOUNT);
   //   const allocationBalanceAfterRelease = (allocationDataAfter[ALLOCATION.balance]);
-  //   const amountClaimedAfterRelease = (allocationDataAfter[ALLOCATION.amountClaimed]);
+  //   const balanceClaimedAfterRelease = (allocationDataAfter[ALLOCATION.balanceClaimed]);
   //
   //   // The founder allocation was originally 240 PTH if 3 months pass they
   //   // should be allowed to withdraw 30 PTH
   //   assert.equal(30, accountBalance, 'The founder\'s ballance in their account is wrong');
-  //   assert.equal(30, amountClaimedAfterRelease, 'The founder\'s ballance in their allocation after releasing is wrong');
+  //   assert.equal(30, balanceClaimedAfterRelease, 'The founder\'s ballance in their allocation after releasing is wrong');
   //   assert.equal(allocationBalanceBeforeRelease - accountBalance, allocationBalanceAfterRelease, 'The amount the contributor has in their account and allcation after is not matching');
   //
   // });
@@ -353,16 +353,16 @@ contract('Distribution', (accounts) => {
   //   const otherBalanceAfter = (otherBalanceAfterBN);
   //
   //   const allocationBalanceBefore = (allocationDataBefore[ALLOCATION.balance]);
-  //   const amountClaimedBefore = (allocationDataBefore[ALLOCATION.amountClaimed]);
+  //   const balanceClaimedBefore = (allocationDataBefore[ALLOCATION.balanceClaimed]);
   //   const allocationBalanceAfter = (allocationDataAfter[ALLOCATION.balance]);
   //
-  //   const amountClaimedAfter = (allocationDataAfter[ALLOCATION.amountClaimed]);
+  //   const balanceClaimedAfter = (allocationDataAfter[ALLOCATION.balanceClaimed]);
   //   const seedContributorBalance = (seedContributorBalanceBN);
-  //   const addedToOtherBalance = allocationBalanceBefore + amountClaimedBefore - amountClaimedAfter;
+  //   const addedToOtherBalance = allocationBalanceBefore + balanceClaimedBefore - balanceClaimedAfter;
   //
-  //   assert.equal(amountClaimedAfter, 400);
+  //   assert.equal(balanceClaimedAfter, 400);
   //   assert.equal(seedContributorBalance, 400);
-  //   assert.equal(seedContributorBalance, amountClaimedAfter);
+  //   assert.equal(seedContributorBalance, balanceClaimedAfter);
   //   assert.equal(allocationBalanceAfter, 0);
   //   assert.equal(otherBalanceBefore + addedToOtherBalance, otherBalanceAfter);
   // });
@@ -387,11 +387,11 @@ contract('Distribution', (accounts) => {
   //
   //   const allocationDataAfter = await instance.vestings(TEAM_MEMBER_ACCOUNT);
   //   const allocationBalanceAfterRelease = (allocationDataAfter[ALLOCATION.balance]);
-  //   const amountClaimedAfterRelease = (allocationDataAfter[ALLOCATION.amountClaimed]);
+  //   const balanceClaimedAfterRelease = (allocationDataAfter[ALLOCATION.balanceClaimed]);
   //
   //   // team member allocation was originally 240 PTH
   //   assert.equal(teamMemeberAccountBalanceAfter, 240);
-  //   assert.equal(amountClaimedAfterRelease, 240);
+  //   assert.equal(balanceClaimedAfterRelease, 240);
   //   assert.equal(allocationBalanceAfterRelease, 0);
   //
   // });
@@ -412,11 +412,11 @@ contract('Distribution', (accounts) => {
   //
   //   const allocationDataAfter = await instance.vestings(FOUNDER_ACCOUNT);
   //   const allocationBalanceAfterRelease = (allocationDataAfter[ALLOCATION.balance]);
-  //   const amountClaimedAfterRelease = (allocationDataAfter[ALLOCATION.amountClaimed]);
+  //   const balanceClaimedAfterRelease = (allocationDataAfter[ALLOCATION.balanceClaimed]);
   //
   //   // team member allocation was originally 240 PTH
   //   assert.equal(accountBalanceAfter, 240);
-  //   assert.equal(amountClaimedAfterRelease, 240);
+  //   assert.equal(balanceClaimedAfterRelease, 240);
   //   assert.equal(allocationBalanceAfterRelease, 0);
   //
   // });
