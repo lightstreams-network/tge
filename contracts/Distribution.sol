@@ -7,11 +7,14 @@ import "./Ownable.sol";
 contract Distribution is Ownable, Vesting {
   using SafeMath for uint256;
 
-  uint256 private constant decimalFactor = 10 ** uint256(18);
-  enum AllocationType {TEAM, SEED_CONTRIBUTORS, FOUNDERS, ADVISORS, CONSULTANTS, OTHER}
+  enum Category {TEAM, SEED_CONTRIBUTORS, FOUNDERS, ADVISORS, CONSULTANTS, OTHER}
 
-  uint256 public INITIAL_SUPPLY = 135000000 * decimalFactor;
-  uint256 public AVAILABLE_TOTAL_SUPPLY = INITIAL_SUPPLY;
+  uint256 private constant decimalFactor = 10 ** uint256(18);
+  uint256 public MAX_TOKENS = 300000000 * decimalFactor;
+
+  // Todo: SHOULD THIS STILL BE SO SPECIFIC? TO BE DISCUSSED
+  uint256 public PROJECT_INITIAL_SUPPLY = 135000000 * decimalFactor;
+  uint256 public PROJECT_AVAILABLE_TOTAL_SUPPLY = PROJECT_INITIAL_SUPPLY;
   uint256 public AVAILABLE_TEAM_SUPPLY = 65424000 * decimalFactor; // 21.81% released over 24 months
   uint256 public AVAILABLE_SEED_CONTRIBUTORS_SUPPLY = 36000000 * decimalFactor; // 12.00% released over 5 months
   uint256 public AVAILABLE_FOUNDERS_SUPPLY = 15000000 * decimalFactor; //  5.00% released over 24 months
@@ -19,78 +22,132 @@ contract Distribution is Ownable, Vesting {
   uint256 public AVAILABLE_CONSULTANTS_SUPPLY = 1891300 * decimalFactor; //  0.63% released at Token Distribution (TD)
   uint256 public AVAILABLE_OTHER_SUPPLY = 16562600 * decimalFactor; //  5.52% released at Token Distribution (TD)
 
+  uint256 public SALE_INITIAL_SUPPLY = 165000000 * decimalFactor;
+  uint256 public SALE_AVAILABLE_TOTAL_SUPPLY = SALE_INITIAL_SUPPLY;
+  uint256 private constant BONUS_MIN = 0;
+
   uint256 public openingTime;
 
   /**
-   * @param _openingTime The time when Lightstreams Tokens Distribution goes live
+   * @param _openingTime The time when LS can setup vesting schedules for sale contributors and the team
    */
   constructor(uint256 _openingTime) Ownable() public {
     // make sure the start time is in the future
     require(_openingTime >= now);
-    // require that the total of the different pools is equal to the total supply
-    require(AVAILABLE_TOTAL_SUPPLY == AVAILABLE_TEAM_SUPPLY.add(AVAILABLE_SEED_CONTRIBUTORS_SUPPLY).add(AVAILABLE_FOUNDERS_SUPPLY).add(AVAILABLE_ADVISORS_SUPPLY).add(AVAILABLE_CONSULTANTS_SUPPLY).add(AVAILABLE_OTHER_SUPPLY));
-
+    // the total of the different pools must equal the total project supply
+    require(PROJECT_AVAILABLE_TOTAL_SUPPLY == AVAILABLE_TEAM_SUPPLY.add(AVAILABLE_SEED_CONTRIBUTORS_SUPPLY).add(AVAILABLE_FOUNDERS_SUPPLY).add(AVAILABLE_ADVISORS_SUPPLY).add(AVAILABLE_CONSULTANTS_SUPPLY).add(AVAILABLE_OTHER_SUPPLY)); 
+    // all tokens are split between sale and project
+    require(MAX_TOKENS == PROJECT_INITIAL_SUPPLY.add(SALE_INITIAL_SUPPLY));
+      
     openingTime = _openingTime;
   }
 
   /**
-   * @notice Allow the owner of the contract to assign a new allocation.
+   * @notice Allow the owner of the contract to assign a new allocation from the project pool.
    *
    * @param _beneficiary The recipient of the allocation
-   * @param _supply The total supply the allocation will be taken from
+   * @param _category The total supply the allocation will be taken from
    */
-  function scheduleProjectVesting(address payable _beneficiary, AllocationType _supply) onlyOwner public payable {
+  function scheduleProjectVesting(address payable _beneficiary, Category _category) onlyOwner public payable {
     uint _amount = msg.value;
 
-    // check to make sure the recipients address current allocation is zero and that the amount being allocated is greater than zero
-    require(_amount > 0, 'no enough tokens sent to allocate to beneficiary');
-    // check to make sure the address exists so tokens don't get burnt
-    require(_beneficiary != address(0), 'no address');
+    if (_category == Category.TEAM) {
+      _validateScheduleProjectVesting(_beneficiary, _amount, AVAILABLE_TEAM_SUPPLY);
 
-    if (_supply == AllocationType.TEAM) {
-      _validateScheduleVesting(_beneficiary, _amount, AVAILABLE_TEAM_SUPPLY);
       AVAILABLE_TEAM_SUPPLY = AVAILABLE_TEAM_SUPPLY.sub(_amount);
       setVestingSchedule(_beneficiary, _amount, 0, now, now + 720 days, 30 days, true);
-    } else if (_supply == AllocationType.SEED_CONTRIBUTORS) {
-      _validateScheduleVesting(_beneficiary, _amount, AVAILABLE_SEED_CONTRIBUTORS_SUPPLY);
+    } else if (_category == Category.SEED_CONTRIBUTORS) {
+      _validateScheduleProjectVesting(_beneficiary, _amount, AVAILABLE_SEED_CONTRIBUTORS_SUPPLY);
+
       AVAILABLE_SEED_CONTRIBUTORS_SUPPLY = AVAILABLE_SEED_CONTRIBUTORS_SUPPLY.sub(_amount);
       setVestingSchedule(_beneficiary, _amount, 0, now, now + 150 days, 30 days, true);
-    } else if (_supply == AllocationType.FOUNDERS) {
-      _validateScheduleVesting(_beneficiary, _amount, AVAILABLE_FOUNDERS_SUPPLY);
+    } else if (_category == Category.FOUNDERS) {
+      _validateScheduleProjectVesting(_beneficiary, _amount, AVAILABLE_FOUNDERS_SUPPLY);
+
       AVAILABLE_FOUNDERS_SUPPLY = AVAILABLE_FOUNDERS_SUPPLY.sub(_amount);
       setVestingSchedule(_beneficiary, _amount, 0, now, now + 720 days, 30 days, true);
-    } else if (_supply == AllocationType.ADVISORS) {
-      _validateScheduleVesting(_beneficiary, _amount, AVAILABLE_ADVISORS_SUPPLY);
+    } else if (_category == Category.ADVISORS) {
+      _validateScheduleProjectVesting(_beneficiary, _amount, AVAILABLE_ADVISORS_SUPPLY);
+
       AVAILABLE_ADVISORS_SUPPLY = AVAILABLE_ADVISORS_SUPPLY.sub(_amount);
       _beneficiary.transfer(_amount);
-    } else if (_supply == AllocationType.CONSULTANTS) {
-      _validateScheduleVesting(_beneficiary, _amount, AVAILABLE_CONSULTANTS_SUPPLY);
+    } else if (_category == Category.CONSULTANTS) {
+      _validateScheduleProjectVesting(_beneficiary, _amount, AVAILABLE_CONSULTANTS_SUPPLY);
+
       AVAILABLE_CONSULTANTS_SUPPLY = AVAILABLE_CONSULTANTS_SUPPLY.sub(_amount);
       _beneficiary.transfer(_amount);
-    } else if (_supply == AllocationType.OTHER) {
-      _validateScheduleVesting(_beneficiary, _amount, AVAILABLE_OTHER_SUPPLY);
+    } else if (_category == Category.OTHER) {
+      _validateScheduleProjectVesting(_beneficiary, _amount, AVAILABLE_OTHER_SUPPLY);
+
       AVAILABLE_OTHER_SUPPLY = AVAILABLE_OTHER_SUPPLY.sub(_amount);
       _beneficiary.transfer(_amount);
+    } else {
+      require(true == false, "project category not supported");
     }
 
-    // Update the total available supply
-    AVAILABLE_TOTAL_SUPPLY = AVAILABLE_TOTAL_SUPPLY.sub(_amount);
+    PROJECT_AVAILABLE_TOTAL_SUPPLY = PROJECT_AVAILABLE_TOTAL_SUPPLY.sub(_amount);
   }
 
-  function _validateScheduleVesting(
+  /**
+   * @notice Allow the owner of the contract to assign a new allocation from the sale pool.
+   *
+   * @param _beneficiary The recipient of the allocation
+   * @param _category The total supply the allocation will be taken from
+   */
+  function schedulePrivateSaleVesting(address payable _beneficiary, uint256 _bonus, Category _category) onlyOwner public payable {
+    uint _amountIncludingBonus = msg.value;
+    uint _amount = _amountIncludingBonus.sub(_bonus);
+
+    _validateSchedulePrivateSaleVesting(_beneficiary, _amount, _bonus);
+
+    setVestingSchedule(_beneficiary, _amount, _bonus, now, now + 150 days, 30 days, true);
+
+    SALE_AVAILABLE_TOTAL_SUPPLY = SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amountIncludingBonus);
+  }
+
+  function _validateScheduleProjectVesting(
     address _beneficiary,
-    uint256 _tokens,
-    uint256 _allocationSupply
+    uint256 _amount,
+    uint256 _categorySupply
   )
   internal view
   {
-    require(_beneficiary != address(0));
     require(openingTime <= now);
-    require(AVAILABLE_TOTAL_SUPPLY.sub(_tokens) >= 0, 'availableSupply');
-    require(_allocationSupply.sub(_tokens) >= 0, 'allocationSupply');
+
+    require(_amount > 0, 'no enough tokens sent to allocate to beneficiary');
+    require(_beneficiary != address(0), 'not a valid address');
+    require(_categorySupply.sub(_amount) >= 0, 'project category max supply reached');
+
+    require(PROJECT_AVAILABLE_TOTAL_SUPPLY.sub(_amount) >= 0, 'project max supply reached');
   }
 
-  function totalAllocated() public view returns (uint256) {
-    return INITIAL_SUPPLY - AVAILABLE_TOTAL_SUPPLY;
+  function _validateSchedulePrivateSaleVesting(
+    address _beneficiary,
+    uint256 _amount,
+    uint256 _bonus
+  )
+  internal view
+  {
+    require(openingTime <= now);
+
+    require(_amount > 0, 'no enough tokens sent to allocate to beneficiary');
+    require(_beneficiary != address(0));
+
+    uint256 bonusMax = SafeMath.div(
+      SafeMath.mul(_amount, 40),
+      100
+    );
+    require(_bonus >= BONUS_MIN && _bonus <= bonusMax);
+    require(_bonus <= _amount);
+
+    require(SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amount).sub(_bonus) >= 0, 'sale max supply reached');
+  }
+
+  function projectSupply() public view returns (uint256) {
+    return PROJECT_INITIAL_SUPPLY - PROJECT_AVAILABLE_TOTAL_SUPPLY;
+  }
+
+  function saleSupply() public view returns (uint256) {
+    return SALE_INITIAL_SUPPLY - SALE_AVAILABLE_TOTAL_SUPPLY;
   }
 }
