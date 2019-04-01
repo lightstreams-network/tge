@@ -11,7 +11,7 @@ const {
     VI
 } = require('./utils');
 
-const TeamDistribution = artifacts.require("TeamDistribution");
+const Distribution = artifacts.require("Distribution");
 
 // Team Distribution Constants
 const AVAILABLE_TOTAL_SUPPLY  =          135000000; // Initial amount minted and transfer to team distribution contract
@@ -30,7 +30,7 @@ const ADVISORS_SUPPLY_ID = 3;
 const CONSULTANTS_SUPPLY_ID = 4;
 const OTHER_SUPPLY_ID = 5;
 
-contract('TeamDistribution', (accounts) => {
+contract('Distribution', (accounts) => {
   const OWNER_ACCOUNT =         accounts[0];
   const TEAM_MEMBER_ACCOUNT =  accounts[1];
   const SEED_CONTRIBUTOR_ACCOUNT = accounts[2];
@@ -43,16 +43,16 @@ contract('TeamDistribution', (accounts) => {
   const NEW_ACCOUNT   =         accounts[9];
 
   it('should deploy the Team Distribution contract and store the address', async ()=>{
-    const instance = await TeamDistribution.deployed();
+    const instance = await Distribution.deployed();
 
     assert.isDefined(instance.address, 'Token address could not be stored');
   });
 
   it('The owner can not create an allocation before allocation period starts as defined in 02_deploy_al.js', async () => {
-    const instance = await TeamDistribution.deployed();
+    const instance = await Distribution.deployed();
     const amount = web3.utils.toWei('1', 'ether');
 
-    assert.isRejected(instance.scheduleVesting(TEAM_MEMBER_ACCOUNT, TEAM_SUPPLY_ID, {from: OWNER_ACCOUNT, value: amount}));
+    assert.isRejected(instance.scheduleProjectVesting(TEAM_MEMBER_ACCOUNT, TEAM_SUPPLY_ID, {from: OWNER_ACCOUNT, value: amount}));
   });
 
   it('Should travel 1 day in the future so the vesting periods can be scheduled', async () => {
@@ -60,12 +60,12 @@ contract('TeamDistribution', (accounts) => {
   });
 
   it('The owner can create an allocation from the team supply', async () => {
-    const instance = await TeamDistribution.deployed();
+    const instance = await Distribution.deployed();
     const amountPHT = 240;
     const amount = web3.utils.toWei(amountPHT.toString(), 'ether');
 
     const teamSupplyBefore = await instance.AVAILABLE_TEAM_SUPPLY.call();
-    await instance.scheduleVesting(TEAM_MEMBER_ACCOUNT, TEAM_SUPPLY_ID, {from: OWNER_ACCOUNT, value: amount});
+    await instance.scheduleProjectVesting(TEAM_MEMBER_ACCOUNT, TEAM_SUPPLY_ID, {from: OWNER_ACCOUNT, value: amount});
     const teamMemberAllocationData = await instance.vestings(TEAM_MEMBER_ACCOUNT);
     const teamSupplyAfter = await instance.AVAILABLE_TEAM_SUPPLY.call();
     const teamMemberAllocation = teamMemberAllocationData[VI.initialAmount];
@@ -78,33 +78,33 @@ contract('TeamDistribution', (accounts) => {
   });
 
   it('The owner can not create an allocation from the team supply greater than the amount allocated to it', async ()=> {
-    const instance = await TeamDistribution.deployed();
+    const instance = await Distribution.deployed();
     const PHT = web3.utils.toWei((AVAILABLE_TEAM_SUPPLY + 100).toString(), 'ether');
 
-    assert.isRejected(instance.scheduleVesting(SEED_CONTRIBUTOR_ACCOUNT, TEAM_SUPPLY_ID, {from: OWNER_ACCOUNT, value: PHT}));
+    assert.isRejected(instance.scheduleProjectVesting(SEED_CONTRIBUTOR_ACCOUNT, TEAM_SUPPLY_ID, {from: OWNER_ACCOUNT, value: PHT}));
   });
 
   it('Only the owner can create an allocation from the team supply', async ()=> {
-    const instance = await TeamDistribution.deployed();
+    const instance = await Distribution.deployed();
     const PHT = web3.utils.toWei((AVAILABLE_TEAM_SUPPLY + 100).toString(), 'ether');
 
-    return assert.isRejected(instance.scheduleVesting(FOUNDER_ACCOUNT, TEAM_SUPPLY_ID, {from: SEED_CONTRIBUTOR_ACCOUNT, value: PHT}));
+    return assert.isRejected(instance.scheduleProjectVesting(FOUNDER_ACCOUNT, TEAM_SUPPLY_ID, {from: SEED_CONTRIBUTOR_ACCOUNT, value: PHT}));
   });
 
   it('The owner can not create an allocation for an address that already has an allocation', async ()=> {
-    const instance = await TeamDistribution.deployed();
+    const instance = await Distribution.deployed();
     const PHT = web3.utils.toWei((AVAILABLE_TEAM_SUPPLY + 100).toString(), 'ether');
 
-    return assert.isRejected(instance.scheduleVesting(TEAM_MEMBER_ACCOUNT, TEAM_SUPPLY_ID, {from: OWNER_ACCOUNT, value: PHT}));
+    return assert.isRejected(instance.scheduleProjectVesting(TEAM_MEMBER_ACCOUNT, TEAM_SUPPLY_ID, {from: OWNER_ACCOUNT, value: PHT}));
   });
 
   it('The owner can create an allocation from the seed contributors supply', async ()=> {
-    const instance = await TeamDistribution.deployed();
+    const instance = await Distribution.deployed();
     const wei = pht2wei('500');
 
     const seedContributorSupplyBefore = await instance.AVAILABLE_SEED_CONTRIBUTORS_SUPPLY.call();
     const totalAllocatedBefore = await instance.totalAllocated.call();
-    await instance.scheduleVesting(SEED_CONTRIBUTOR_ACCOUNT, SEED_CONTRIBUTORS_SUPPLY_ID, {from: OWNER_ACCOUNT, value: wei});
+    await instance.scheduleProjectVesting(SEED_CONTRIBUTOR_ACCOUNT, SEED_CONTRIBUTORS_SUPPLY_ID, {from: OWNER_ACCOUNT, value: wei});
     const seedContributorAllocationData = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
     const seedContributorSupplyAfter = await instance.AVAILABLE_SEED_CONTRIBUTORS_SUPPLY.call();
     const totalAllocatedAfter = await instance.totalAllocated.call();
@@ -117,22 +117,22 @@ contract('TeamDistribution', (accounts) => {
   });
 
   // it('The owner can not create an allocation from the seed contributor supply greater than the amount allocated to it', async ()=> {
-  //   const instance = await TeamDistribution.deployed();
+  //   const instance = await Distribution.deployed();
   //   const PHT = web3.utils.toWei(AVAILABLE_SEED_CONTRIBUTORS_SUPPLY + 100, 'ether');
   //
-  //   return assert.isRejected(instance.scheduleVesting(FOUNDER_ACCOUNT, PHT, SEED_CONTRIBUTORS_SUPPLY_ID));
+  //   return assert.isRejected(instance.scheduleProjectVesting(FOUNDER_ACCOUNT, PHT, SEED_CONTRIBUTORS_SUPPLY_ID));
   //
   // });
   //
   // it('The owner can create an allocation from the founders supply', async ()=> {
-  //   const instance = await TeamDistribution.deployed();
+  //   const instance = await Distribution.deployed();
   //   const PHT = web3.utils.toWei('240', 'ether');
   //
   //   const founderAllocationDataBefore = await instance.vestings(FOUNDER_ACCOUNT);
   //
   //   const foundersSupplyBeforeBN = await instance.AVAILABLE_FOUNDERS_SUPPLY.call();
   //
-  //   const scheduleVestingTransaction = await instance.scheduleVesting(FOUNDER_ACCOUNT, PHT, FOUNDERS_SUPPLY_ID);
+  //   const scheduleProjectVestingTransaction = await instance.scheduleProjectVesting(FOUNDER_ACCOUNT, PHT, FOUNDERS_SUPPLY_ID);
   //   const founderAllocationData = await instance.vestings(FOUNDER_ACCOUNT);
   //
   //   const founderSupplyAfterBN = await instance.AVAILABLE_FOUNDERS_SUPPLY.call();
@@ -148,22 +148,22 @@ contract('TeamDistribution', (accounts) => {
   // });
   //
   // it('The owner can not create an allocation from the founders supply greater than the amount allocated to it', async ()=> {
-  //   const instance = await TeamDistribution.deployed();
+  //   const instance = await Distribution.deployed();
   //   const PHT = web3.utils.toWei(AVAILABLE_FOUNDERS_SUPPLY + 100, 'ether');
   //
-  //   return assert.isRejected(instance.scheduleVesting(NEW_ACCOUNT, PHT, FOUNDERS_SUPPLY_ID));
+  //   return assert.isRejected(instance.scheduleProjectVesting(NEW_ACCOUNT, PHT, FOUNDERS_SUPPLY_ID));
   //
   // });
   //
   //
   // it('The owner can create an allocation from the advisors supply', async ()=> {
-  //   const instance = await TeamDistribution.deployed();
+  //   const instance = await Distribution.deployed();
   //   const tokenInstance = await LightstreamsToken.deployed();
   //   const PHT = web3.utils.toWei('100', 'ether');
   //
   //   const advisorsSupplyBeforeBN = await instance.AVAILABLE_ADVISORS_SUPPLY.call();
   //
-  //   const scheduleVestingTransaction = await instance.scheduleVesting(ADVISOR_ACCOUNT, PHT, ADVISORS_SUPPLY_ID);
+  //   const scheduleProjectVestingTransaction = await instance.scheduleProjectVesting(ADVISOR_ACCOUNT, PHT, ADVISORS_SUPPLY_ID);
   //   const advisorAllocationData = await instance.vestings(ADVISOR_ACCOUNT);
   //
   //   const advisorSupplyAfterBN = await instance.AVAILABLE_ADVISORS_SUPPLY.call();
@@ -183,20 +183,20 @@ contract('TeamDistribution', (accounts) => {
   // });
   //
   // it('The owner can not create an allocation from the advisors supply greater than the amount allocated to it', async ()=> {
-  //   const instance = await TeamDistribution.deployed();
+  //   const instance = await Distribution.deployed();
   //   const PHT = web3.utils.toWei(AVAILABLE_ADVISORS_SUPPLY + 1000, 'ether');
   //
-  //   return assert.isRejected(instance.scheduleVesting(NEW_ACCOUNT, PHT, ADVISORS_SUPPLY_ID));
+  //   return assert.isRejected(instance.scheduleProjectVesting(NEW_ACCOUNT, PHT, ADVISORS_SUPPLY_ID));
   // });
   //
   // it('The owner can create an allocation from the consultants supply', async ()=> {
-  //   const instance = await TeamDistribution.deployed();
+  //   const instance = await Distribution.deployed();
   //   const tokenInstance = await LightstreamsToken.deployed();
   //   const PHT = web3.utils.toWei('100', 'ether');
   //
   //   const consultantSupplyBeforeBN = await instance.AVAILABLE_CONSULTANTS_SUPPLY.call();
   //
-  //   const scheduleVestingTransaction = await instance.scheduleVesting(CONSULTANT_ACCOUNT, PHT, CONSULTANTS_SUPPLY_ID);
+  //   const scheduleProjectVestingTransaction = await instance.scheduleProjectVesting(CONSULTANT_ACCOUNT, PHT, CONSULTANTS_SUPPLY_ID);
   //   const consultantAllocationData = await instance.vestings(CONSULTANT_ACCOUNT);
   //
   //   const consultantSupplyAfterBN = await instance.AVAILABLE_CONSULTANTS_SUPPLY.call();
@@ -216,20 +216,20 @@ contract('TeamDistribution', (accounts) => {
   // });
   //
   // it('The owner can not create an allocation from the consultants supply greater than the amount allocated to it', async ()=> {
-  //   const instance = await TeamDistribution.deployed();
+  //   const instance = await Distribution.deployed();
   //   const PHT = web3.utils.toWei(AVAILABLE_CONSULTANTS_SUPPLY + 100, 'ether');
   //
-  //   return assert.isRejected(instance.scheduleVesting(NEW_ACCOUNT, PHT, CONSULTANTS_SUPPLY_ID));
+  //   return assert.isRejected(instance.scheduleProjectVesting(NEW_ACCOUNT, PHT, CONSULTANTS_SUPPLY_ID));
   // });
   //
   // it('The owner can create an allocation from the others supply', async ()=> {
-  //   const instance = await TeamDistribution.deployed();
+  //   const instance = await Distribution.deployed();
   //   const tokenInstance = await LightstreamsToken.deployed();
   //   const PHT = web3.utils.toWei('100', 'ether');
   //
   //   const otherSupplyBeforeBN = await instance.AVAILABLE_OTHER_SUPPLY.call();
   //
-  //   const scheduleVestingTransaction = await instance.scheduleVesting(OTHER_ACCOUNT, PHT, OTHER_SUPPLY_ID);
+  //   const scheduleProjectVestingTransaction = await instance.scheduleProjectVesting(OTHER_ACCOUNT, PHT, OTHER_SUPPLY_ID);
   //   const otherAllocationData = await instance.vestings(OTHER_ACCOUNT);
   //
   //   const otherSupplyAfterBN = await instance.AVAILABLE_OTHER_SUPPLY.call();
@@ -250,14 +250,14 @@ contract('TeamDistribution', (accounts) => {
   //
   //
   // it('The owner can not create an allocation from the other supply greater than the amount allocated to it', async ()=> {
-  //   const instance = await TeamDistribution.deployed();
+  //   const instance = await Distribution.deployed();
   //   const PHT = web3.utils.toWei(AVAILABLE_OTHER_SUPPLY + 1000, 'ether');
   //
-  //   return assert.isRejected(instance.scheduleVesting(NEW_ACCOUNT, PHT, CONSULTANTS_SUPPLY_ID));
+  //   return assert.isRejected(instance.scheduleProjectVesting(NEW_ACCOUNT, PHT, CONSULTANTS_SUPPLY_ID));
   // });
 
   it('The team member can release their vested amount', async ()=> {
-    const instance = await TeamDistribution.deployed();
+    const instance = await Distribution.deployed();
 
     await timeTravel(30 * 3); // Travel 3 months into the future for testing
     const vestingBefore = await instance.vestings(TEAM_MEMBER_ACCOUNT);
@@ -278,7 +278,7 @@ contract('TeamDistribution', (accounts) => {
   });
 
   // it('The seed contributor can release their vested amount', async ()=> {
-  //   const instance = await TeamDistribution.deployed();
+  //   const instance = await Distribution.deployed();
   //   const tokenInstance = await LightstreamsToken.deployed();
   //
   //   const allocationDataBefore = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
@@ -302,7 +302,7 @@ contract('TeamDistribution', (accounts) => {
   // });
   //
   // it('The founder can release their vested amount', async ()=> {
-  //   const instance = await TeamDistribution.deployed();
+  //   const instance = await Distribution.deployed();
   //   const tokenInstance = await LightstreamsToken.deployed();
   //
   //   const allocationDataBefore = await instance.vestings(FOUNDER_ACCOUNT);
@@ -326,13 +326,13 @@ contract('TeamDistribution', (accounts) => {
   // });
   //
   // it('The someone other than the team member can not release the vested amount', async ()=> {
-  //   const instance = await TeamDistribution.deployed();
+  //   const instance = await Distribution.deployed();
   //
   //   return assert.isRejected(instance.release(TEAM_MEMBER_ACCOUNT, {from: SEED_CONTRIBUTOR_ACCOUNT}));
   // });
   //
   // it('The the owner can revoke a seed contributor\'s vesting', async ()=> {
-  //   const instance = await TeamDistribution.deployed();
+  //   const instance = await Distribution.deployed();
   //   const tokenInstance = await LightstreamsToken.deployed();
   //
   //   const timeTravelTransaction = await timeTravel(3600 * 24 * 30 * 1); // Travel 1 month into the future for testing
@@ -368,7 +368,7 @@ contract('TeamDistribution', (accounts) => {
   // });
   //
   // it('The team member can release all their vested funds when the vesting time is complete', async ()=> {
-  //   const instance = await TeamDistribution.deployed();
+  //   const instance = await Distribution.deployed();
   //   const tokenInstance = await LightstreamsToken.deployed();
   //
   //   const allocationDataBefore = await instance.vestings(TEAM_MEMBER_ACCOUNT);
@@ -397,7 +397,7 @@ contract('TeamDistribution', (accounts) => {
   // });
   //
   // it('The founder can release all their vested funds when the vesting time is complete', async ()=> {
-  //   const instance = await TeamDistribution.deployed();
+  //   const instance = await Distribution.deployed();
   //   const tokenInstance = await LightstreamsToken.deployed();
   //
   //   const allocationDataBefore = await instance.vestings(FOUNDER_ACCOUNT);
@@ -423,7 +423,7 @@ contract('TeamDistribution', (accounts) => {
   //
   //
   // it('The only the owner can revoke a team member\'s vesting', async ()=> {
-  //   const instance = await TeamDistribution.deployed();
+  //   const instance = await Distribution.deployed();
   //
   //   return assert.isRejected(instance.revokeAllocation(accounts[2], {from: accounts[3]}));
   // });
