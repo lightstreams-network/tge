@@ -121,6 +121,27 @@ contract Distribution is Ownable, Vesting {
     _beneficiary.transfer(_amountIncludingBonus);
   }
 
+  function revokeVesting(address payable _beneficiary) onlyOwner public {
+    uint backToProjectWallet = _doRevokeVesting(_beneficiary);
+
+    AVAILABLE_OTHER_SUPPLY = AVAILABLE_OTHER_SUPPLY.add(backToProjectWallet);
+  }
+
+  /**
+   * @dev Allows the owner to transfer any tokens that have been revoked to be transfered to another address
+   * @param _recipient The address where the tokens should be sent
+   * @param _amount Number of tokens to be transfer to recipient
+   */
+  function transferRevokedTokens(address payable _recipient, uint256 _amount) public onlyOwner {
+    require(_amount <= revokedAmount);
+    require(_recipient != address(0));
+
+    revokedAmount = revokedAmount.sub(_amount);
+    AVAILABLE_OTHER_SUPPLY = AVAILABLE_OTHER_SUPPLY.sub(_amount);
+
+    _recipient.transfer(_amount);
+  }
+
   function _validateScheduleProjectVesting(
     address _beneficiary,
     uint256 _amount,

@@ -31,16 +31,16 @@ const CONSULTANTS_SUPPLY_ID = 4;
 const OTHER_SUPPLY_ID = 5;
 
 contract('Distribution', (accounts) => {
-  const OWNER_ACCOUNT =         accounts[0];
-  const TEAM_MEMBER_ACCOUNT =  accounts[1];
-  const SEED_CONTRIBUTOR_ACCOUNT = accounts[2];
-  const FOUNDER_ACCOUNT =       accounts[3];
-  const ADVISOR_ACCOUNT =       accounts[4];
-  const CONSULTANT_ACCOUNT =    accounts[5];
-  const OTHER_ACCOUNT =         accounts[6];
-  const CONTRIBUTOR_1_ACCOUNT = accounts[7];
-  const CONTRIBUTOR_2_ACCOUNT = accounts[8];
-  const NEW_ACCOUNT   =         accounts[9];
+    const OWNER_ACCOUNT = accounts[0];
+    const TEAM_MEMBER_ACCOUNT = accounts[1];
+    const SEED_CONTRIBUTOR_ACCOUNT = accounts[2];
+    const FOUNDER_ACCOUNT = accounts[3];
+    const ADVISOR_ACCOUNT = accounts[4];
+    const CONSULTANT_ACCOUNT = accounts[5];
+    const OTHER_ACCOUNT = accounts[6];
+    const CONTRIBUTOR_1_ACCOUNT = accounts[7];
+    const CONTRIBUTOR_2_ACCOUNT = accounts[8];
+    const NEW_ACCOUNT = accounts[9];
 
   it('should deploy the Team Distribution contract and store the address', async ()=>{
     const instance = await Distribution.deployed();
@@ -328,42 +328,52 @@ contract('Distribution', (accounts) => {
     assert.isRejected(instance.withdraw(TEAM_MEMBER_ACCOUNT, {from: SEED_CONTRIBUTOR_ACCOUNT}));
   });
 
-  // it('The the owner can revoke a seed contributor\'s vesting', async ()=> {
-  //   const instance = await Distribution.deployed();
-  //   const tokenInstance = await LightstreamsToken.deployed();
-  //
-  //   const timeTravelTransaction = await timeTravel(3600 * 24 * 30 * 1); // Travel 1 month into the future for testing
-  //   await mineBlock();
-  //
-  //   // Get balances before revoking
-  //   const otherBalanceBeforeBN = await instance.AVAILABLE_OTHER_SUPPLY.call();
-  //   const allocationDataBefore = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
-  //   // revoke vesting
-  //   const revokeAllocation = await instance.revokeAllocation(SEED_CONTRIBUTOR_ACCOUNT);
-  //   // Get balances after revoking
-  //   const otherBalanceAfterBN = await instance.AVAILABLE_OTHER_SUPPLY.call();
-  //   const allocationDataAfter = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
-  //   const seedContributorBalanceBN = await tokenInstance.balanceOf(SEED_CONTRIBUTOR_ACCOUNT);
-  //
-  //   // convert from Big Number to an integer
-  //   const otherBalanceBefore = (otherBalanceBeforeBN);
-  //   const otherBalanceAfter = (otherBalanceAfterBN);
-  //
-  //   const allocationBalanceBefore = (allocationDataBefore[ALLOCATION.balance]);
-  //   const balanceClaimedBefore = (allocationDataBefore[ALLOCATION.balanceClaimed]);
-  //   const allocationBalanceAfter = (allocationDataAfter[ALLOCATION.balance]);
-  //
-  //   const balanceClaimedAfter = (allocationDataAfter[ALLOCATION.balanceClaimed]);
-  //   const seedContributorBalance = (seedContributorBalanceBN);
-  //   const addedToOtherBalance = allocationBalanceBefore + balanceClaimedBefore - balanceClaimedAfter;
-  //
-  //   assert.equal(balanceClaimedAfter, 400);
-  //   assert.equal(seedContributorBalance, 400);
-  //   assert.equal(seedContributorBalance, balanceClaimedAfter);
-  //   assert.equal(allocationBalanceAfter, 0);
-  //   assert.equal(otherBalanceBefore + addedToOtherBalance, otherBalanceAfter);
-  // });
-  //
+  it('The owner can revoke a seed contributor vesting', async ()=> {
+    const instance = await Distribution.deployed();
+
+    await timeTravel(30);
+
+    const revokedAmountBf = await instance.revokedAmount.call();
+    const otherSupplyBf = await instance.AVAILABLE_OTHER_SUPPLY.call();
+    const vestingBf = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
+    const contributorBalanceBf = toBN(await web3.eth.getBalance(SEED_CONTRIBUTOR_ACCOUNT));
+    const newAddressBalanceBf = toBN(await web3.eth.getBalance(NEW_ACCOUNT));
+    const contractBalanceBf = toBN(await web3.eth.getBalance(instance.address));
+
+    await instance.revokeVesting(SEED_CONTRIBUTOR_ACCOUNT, {from: OWNER_ACCOUNT});
+
+    const otherSupplyAf = await instance.AVAILABLE_OTHER_SUPPLY.call();
+    const vestingAf = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
+    const contributorBalanceAf = toBN(await web3.eth.getBalance(SEED_CONTRIBUTOR_ACCOUNT));
+    let   revokedAmountAf = await instance.revokedAmount.call();
+    let   contractBalanceAf = toBN(await web3.eth.getBalance(instance.address));
+
+    // Seed contributor withdrawn already 300 out of 500 tokens. Revoking his vesting 1 month later
+    // means sending another 100 tokens his way and remaining 100 putting back to the OTHER_SUPPLY
+    assert.equal(revokedAmountBf, 0);
+    assert.equal(revokedAmountAf.toString(), pht2wei(100).toString());
+    assert.equal(vestingBf[VI.balanceClaimed].toString(), pht2wei(300).toString());
+    assert.equal(vestingAf[VI.balanceClaimed].toString(), pht2wei(400).toString());
+    assert.equal(vestingBf[VI.balanceInitial].toString(), vestingAf[VI.balanceInitial].toString());
+    assert.equal(vestingAf[VI.revoked], true);
+    assert.equal(vestingAf[VI.balanceRemaining], 0);
+    assert.equal(vestingAf[VI.bonusRemaining], 0);
+    assert.equal(contributorBalanceAf.toString(), contributorBalanceBf.add(pht2wei(100)).toString());
+    assert.equal(otherSupplyAf.toString(), otherSupplyBf.add(pht2wei(100)).toString());
+    assert.equal(contractBalanceAf.toString(), contractBalanceBf.sub(pht2wei(100)).toString());
+
+    // We can now transfer e.g 50 tokens to any address out of 100 revoked, available in contract
+    await instance.transferRevokedTokens(NEW_ACCOUNT, pht2wei(50), {from: OWNER_ACCOUNT});
+
+    const newAddressBalanceAf = toBN(await web3.eth.getBalance(NEW_ACCOUNT));
+    const finalContractBalance = toBN(await web3.eth.getBalance(instance.address));
+    revokedAmountAf = await instance.revokedAmount.call();
+
+    assert.equal(revokedAmountAf.toString(), pht2wei(50).toString());
+    assert.equal(newAddressBalanceAf.toString(), newAddressBalanceBf.add(pht2wei(50)).toString());
+    assert.equal(finalContractBalance.toString(), contractBalanceAf.sub(pht2wei(50)).toString());
+  });
+
   // it('The team member can release all their vested funds when the vesting time is complete', async ()=> {
   //   const instance = await Distribution.deployed();
   //   const tokenInstance = await LightstreamsToken.deployed();

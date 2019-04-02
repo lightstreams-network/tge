@@ -8,7 +8,7 @@ const wei2Pht = (wei) => {
 };
 
 const pht2Wei = (pht) => {
-  return web3.utils.toBN(web3.utils.toWei(pht, 'ether'));
+  return web3.utils.toBN(web3.utils.toWei(pht.toString(), 'ether'));
 };
 
 const toBN = (value) => {

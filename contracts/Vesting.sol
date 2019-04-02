@@ -52,7 +52,6 @@ contract Vesting is Ownable {
   event LogInt(string _type, uint _uint);
 
   constructor() public {
-
   }
 
   /**
@@ -99,6 +98,7 @@ contract Vesting is Ownable {
     uint256 totalPurchaseDifference = vesting.balanceInitial.sub(vesting.balanceClaimed).sub(_amount);
     uint256 totalBonusDifference = vesting.bonusInitial.sub(vesting.bonusClaimed).sub(_bonus);
 
+    // Todo: should increase the OTHER_SUPPLY in Distribution.sol like in case of a revoke
     revokedAmount = revokedAmount.add(totalPurchaseDifference).add(totalBonusDifference);
 
     vestings[_beneficiary] = VestingSchedule(startTimestamp, endTimestamp, lockPeriod, _amount, 0, _amount, _bonus, 0, _bonus, revocable, false);
@@ -119,7 +119,7 @@ contract Vesting is Ownable {
 
     uint256 totalAmountVested = _calculateTotalAmountVested(_beneficiary, vestingSchedule.startTimestamp, vestingSchedule.endTimestamp, vestingSchedule.balanceInitial);
     uint256 amountWithdrawable = totalAmountVested.sub(vestingSchedule.balanceClaimed);
-    uint256 releasable = _withdrawalAllowed(amountWithdrawable, vestingSchedule.startTimestamp, vestingSchedule.endTimestamp, vestingSchedule.lockPeriod, vestingSchedule.balanceInitial);
+    uint256 releasable = _calculateBalanceWithdrawal(amountWithdrawable, vestingSchedule.startTimestamp, vestingSchedule.endTimestamp, vestingSchedule.lockPeriod, vestingSchedule.balanceInitial);
 
     if (releasable > 0) {
       vestings[_beneficiary].balanceClaimed = vestingSchedule.balanceClaimed.add(releasable);
@@ -154,7 +154,7 @@ contract Vesting is Ownable {
    * @dev Allows the to revoke the vesting schedule for a contributor with a vesting schedule
    * @param _beneficiary Address of contributor with a vesting schedule to be revoked
    */
-  function revokeVesting(address payable _beneficiary) onlyOwner public {
+  function _doRevokeVesting(address payable _beneficiary) onlyOwner internal returns(uint backToProjectWallet) {
     require(vestings[_beneficiary].revocable == true);
 
     VestingSchedule memory vestingSchedule = vestings[_beneficiary];
@@ -162,7 +162,7 @@ contract Vesting is Ownable {
     uint256 totalAmountVested = _calculateTotalAmountVested(_beneficiary, vestingSchedule.startTimestamp, vestingSchedule.endTimestamp, vestingSchedule.balanceInitial);
     uint256 amountWithdrawable = totalAmountVested.sub(vestingSchedule.balanceClaimed);
 
-    uint256 refundable = _withdrawalAllowed(amountWithdrawable,  vestingSchedule.startTimestamp, vestingSchedule.endTimestamp, vestingSchedule.lockPeriod, vestingSchedule.balanceInitial);
+    uint256 refundable = _calculateBalanceWithdrawal(amountWithdrawable,  vestingSchedule.startTimestamp, vestingSchedule.endTimestamp, vestingSchedule.lockPeriod, vestingSchedule.balanceInitial);
     uint256 refundableBonus = _calculateBonusWithdrawal(vestingSchedule.startTimestamp, vestingSchedule.endTimestamp, vestingSchedule.lockPeriod, vestingSchedule.balanceInitial, vestingSchedule.bonusRemaining);
 
     uint256 toProjectWalletFrombalanceInitial = vestingSchedule.balanceRemaining.sub(refundable);
@@ -185,19 +185,8 @@ contract Vesting is Ownable {
     }
 
     emit RevokedVesting(_beneficiary);
-  }
 
-  /**
-   * @dev Allows the owner to transfer any tokens that have been revoked to be transfered to another address
-   * @param _recipient The address where the tokens should be sent
-   * @param _amount Number of tokens to be transfer to recipient
-   */
-  function transferRevokedTokens(address payable _recipient, uint256 _amount) public onlyOwner {
-    require(_amount <= revokedAmount);
-    require(_recipient != address(0));
-    revokedAmount = revokedAmount.sub(_amount);
-
-    _recipient.transfer(_amount);
+    return backToProjectWallet;
   }
 
   /**
@@ -233,7 +222,7 @@ contract Vesting is Ownable {
    * @param _lockPeriod time interval (in seconds) in between vesting releases (example 30 days = 2592000 seconds)
    * @param _balanceInitial The starting number of tokens vested
    */
-  function _withdrawalAllowed(uint256 _amountWithdrawable, uint256 _startTimestamp, uint256 _endTimestamp, uint256 _lockPeriod, uint256 _balanceInitial) internal view returns(uint256 _amountReleasable) {
+  function _calculateBalanceWithdrawal(uint256 _amountWithdrawable, uint256 _startTimestamp, uint256 _endTimestamp, uint256 _lockPeriod, uint256 _balanceInitial) internal view returns(uint256 _amountReleasable) {
     // If it's past the end time, the whole amount is available.
     if (now >= _endTimestamp) {
       return _amountWithdrawable;
