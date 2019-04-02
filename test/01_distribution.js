@@ -14,13 +14,14 @@ const {
 const Distribution = artifacts.require("Distribution");
 
 // Team Distribution Constants
-const AVAILABLE_TOTAL_SUPPLY  =          135000000; // Initial amount minted and transfer to team distribution contract
-const AVAILABLE_TEAM_SUPPLY   =           65424000; // 21.81% released over 24 months
+const AVAILABLE_TOTAL_SUPPLY  =             135000000; // Initial amount minted and transfer to team distribution contract
+const AVAILABLE_TEAM_SUPPLY   =              65424000; // 21.81% released over 24 months
 const AVAILABLE_SEED_CONTRIBUTORS_SUPPLY =   36000000; // 12.00% released over 5 months
-const AVAILABLE_FOUNDERS_SUPPLY   =       15000000; //  5.00% released over 24 months
-const AVAILABLE_ADVISORS_SUPPLY   =         122100; //  0.04% released at Token Distribution (TD)
-const AVAILABLE_CONSULTANTS_SUPPLY   =     1891300; //  0.63% released at Token Distribution (TD)
-const AVAILABLE_OTHER_SUPPLY   =          16562600; //  5.52% released at Token Distribution (TD)
+const AVAILABLE_FOUNDERS_SUPPLY   =          15000000; //  5.00% released over 24 months
+const AVAILABLE_ADVISORS_SUPPLY   =            122100; //  0.04% released at Token Distribution (TD)
+const AVAILABLE_CONSULTANTS_SUPPLY   =        1891300; //  0.63% released at Token Distribution (TD)
+const AVAILABLE_OTHER_SUPPLY   =             16562600; //  5.52% released at Token Distribution (TD)
+const SALE_AVAILABLE_TOTAL_SUPPLY     =     165000000;
 
 // Team Distribution Constants
 const TEAM_SUPPLY_ID = 0;
@@ -35,7 +36,7 @@ contract('Distribution', (accounts) => {
     const TEAM_MEMBER_ACCOUNT = accounts[1];
     const SEED_CONTRIBUTOR_ACCOUNT = accounts[2];
     const FOUNDER_ACCOUNT = accounts[3];
-    const ADVISOR_ACCOUNT = accounts[4];
+    const PRIVATE_SALE_ACCOUNT = accounts[4];
     const CONSULTANT_ACCOUNT = accounts[5];
     const OTHER_ACCOUNT = accounts[6];
     const CONTRIBUTOR_1_ACCOUNT = accounts[7];
@@ -98,6 +99,13 @@ contract('Distribution', (accounts) => {
     return assert.isRejected(instance.scheduleProjectVesting(TEAM_MEMBER_ACCOUNT, TEAM_SUPPLY_ID, {from: OWNER_ACCOUNT, value: PHT}));
   });
 
+  it('The owner can not create an allocation from the seed contributor supply greater than the amount allocated to it', async ()=> {
+      const instance = await Distribution.deployed();
+      const PHT = web3.utils.toWei((AVAILABLE_SEED_CONTRIBUTORS_SUPPLY + 100).toString(), 'ether');
+
+      return assert.isRejected(instance.scheduleProjectVesting(SEED_CONTRIBUTOR_ACCOUNT, SEED_CONTRIBUTORS_SUPPLY_ID, {from: OWNER_ACCOUNT, value: PHT}));
+  });
+
   it('The owner can create an allocation from the seed contributors supply', async ()=> {
     const instance = await Distribution.deployed();
     const wei = pht2wei('500');
@@ -114,15 +122,28 @@ contract('Distribution', (accounts) => {
 
     assert.equal(AVAILABLE_SEED_CONTRIBUTORS_SUPPLY, wei2Ether(seedContributorSupplyBefore));
     assert.equal(seedContributorAllocation.toString(), wei.toString());
-    assert.equal(seedContributorSupplyBefore.sub(seedContributorAllocation).toString(), seedContributorSupplyAfter.toString());
-    assert.equal(projectSupplyDistributedBefore.add(wei).toString(), projectSupplyDistributedAfter.toString());
+    assert.equal(seedContributorSupplyAfter.toString(), seedContributorSupplyBefore.sub(seedContributorAllocation).toString());
+    assert.equal(projectSupplyDistributedAfter.toString(), projectSupplyDistributedBefore.add(wei).toString());
   });
 
-  it('The owner can not create an allocation from the seed contributor supply greater than the amount allocated to it', async ()=> {
+  it('The owner can create an allocation for private contributors from sale supply with vesting', async ()=> {
     const instance = await Distribution.deployed();
-    const PHT = web3.utils.toWei((AVAILABLE_SEED_CONTRIBUTORS_SUPPLY + 100).toString(), 'ether');
+    const wei = pht2wei('500');
 
-    return assert.isRejected(instance.scheduleProjectVesting(SEED_CONTRIBUTOR_ACCOUNT, SEED_CONTRIBUTORS_SUPPLY_ID, {from: OWNER_ACCOUNT, value: PHT}));
+    const saleContributorSupplyBefore = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
+    const saleSupplyDistributedBefore = await instance.saleSupplyDistributed();
+
+    await instance.schedulePrivateSaleVesting(PRIVATE_SALE_ACCOUNT, 0, {from: OWNER_ACCOUNT, value: wei});
+
+    const contributorAllocationData = await instance.vestings(PRIVATE_SALE_ACCOUNT);
+    const contributorSupplyAfter = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
+    const projectSupplyDistributedAfter = await instance.saleSupplyDistributed();
+    const contributorAllocation = contributorAllocationData[VI.balanceInitial];
+
+    assert.equal(SALE_AVAILABLE_TOTAL_SUPPLY, wei2Ether(saleContributorSupplyBefore));
+    assert.equal(contributorAllocation.toString(), wei.toString());
+    assert.equal(contributorSupplyAfter.toString(), saleContributorSupplyBefore.sub(contributorAllocation).toString());
+    assert.equal(projectSupplyDistributedAfter.toString(), saleSupplyDistributedBefore.add(wei).toString());
   });
 
   // it('The owner can create an allocation from the founders supply', async ()=> {
@@ -289,6 +310,26 @@ contract('Distribution', (accounts) => {
 
     const vestingAfter = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
     const contributorBalanceAfter = toBN(await web3.eth.getBalance(SEED_CONTRIBUTOR_ACCOUNT));
+
+    // seed contributor allocation was originally 500 PTH if 3 months pass they
+    // should be allowed to withdraw 300 PTH
+    assert.equal(contributorBalanceAfter.toString(), contributorBalanceBefore.add(pht2wei('300').sub(txCost)).toString());
+    assert.equal(vestingAfter[VI.balanceInitial].toString(), vestingBefore[VI.balanceInitial].toString());
+    assert.equal(vestingAfter[VI.balanceRemaining].toString(), vestingBefore[VI.balanceRemaining].sub(pht2wei('300')).toString());
+    assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei('300').toString());
+  });
+
+  it('The private sale contributor can release their vested amount', async ()=> {
+    const instance = await Distribution.deployed();
+
+    const vestingBefore = await instance.vestings(PRIVATE_SALE_ACCOUNT);
+    const contributorBalanceBefore = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT));
+
+    const tx = await instance.withdraw(PRIVATE_SALE_ACCOUNT, {from: PRIVATE_SALE_ACCOUNT});
+    const txCost = await calculateGasCost(tx.receipt.gasUsed);
+
+    const vestingAfter = await instance.vestings(PRIVATE_SALE_ACCOUNT);
+    const contributorBalanceAfter = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT));
 
     // seed contributor allocation was originally 500 PTH if 3 months pass they
     // should be allowed to withdraw 300 PTH
