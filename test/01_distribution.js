@@ -321,13 +321,13 @@ contract('Distribution', (accounts) => {
   //   assert.equal(allocationBalanceBeforeRelease - accountBalance, allocationBalanceAfterRelease, 'The amount the contributor has in their account and allcation after is not matching');
   //
   // });
-  //
-  // it('The someone other than the team member can not release the vested amount', async ()=> {
-  //   const instance = await Distribution.deployed();
-  //
-  //   return assert.isRejected(instance.release(TEAM_MEMBER_ACCOUNT, {from: SEED_CONTRIBUTOR_ACCOUNT}));
-  // });
-  //
+
+  it('Only beneficiary itself can release its vested amount', async ()=> {
+    const instance = await Distribution.deployed();
+
+    assert.isRejected(instance.withdraw(TEAM_MEMBER_ACCOUNT, {from: SEED_CONTRIBUTOR_ACCOUNT}));
+  });
+
   // it('The the owner can revoke a seed contributor\'s vesting', async ()=> {
   //   const instance = await Distribution.deployed();
   //   const tokenInstance = await LightstreamsToken.deployed();
