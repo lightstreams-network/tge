@@ -118,14 +118,13 @@ contract('Distribution', (accounts) => {
     assert.equal(projectSupplyDistributedBefore.add(wei).toString(), projectSupplyDistributedAfter.toString());
   });
 
-  // it('The owner can not create an allocation from the seed contributor supply greater than the amount allocated to it', async ()=> {
-  //   const instance = await Distribution.deployed();
-  //   const PHT = web3.utils.toWei(AVAILABLE_SEED_CONTRIBUTORS_SUPPLY + 100, 'ether');
-  //
-  //   return assert.isRejected(instance.scheduleProjectVesting(FOUNDER_ACCOUNT, PHT, SEED_CONTRIBUTORS_SUPPLY_ID));
-  //
-  // });
-  //
+  it('The owner can not create an allocation from the seed contributor supply greater than the amount allocated to it', async ()=> {
+    const instance = await Distribution.deployed();
+    const PHT = web3.utils.toWei((AVAILABLE_SEED_CONTRIBUTORS_SUPPLY + 100).toString(), 'ether');
+
+    return assert.isRejected(instance.scheduleProjectVesting(SEED_CONTRIBUTOR_ACCOUNT, SEED_CONTRIBUTORS_SUPPLY_ID, {from: OWNER_ACCOUNT, value: PHT}));
+  });
+
   // it('The owner can create an allocation from the founders supply', async ()=> {
   //   const instance = await Distribution.deployed();
   //   const PHT = web3.utils.toWei('240', 'ether');
