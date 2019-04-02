@@ -278,30 +278,26 @@ contract('Distribution', (accounts) => {
     assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei('30').toString());
   });
 
-  // it('The seed contributor can release their vested amount', async ()=> {
-  //   const instance = await Distribution.deployed();
-  //   const tokenInstance = await LightstreamsToken.deployed();
-  //
-  //   const allocationDataBefore = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
-  //   const allocationBalanceBeforeRelease = (allocationDataBefore[ALLOCATION.balance]);
-  //
-  //   const released = await instance.release(SEED_CONTRIBUTOR_ACCOUNT, {from: SEED_CONTRIBUTOR_ACCOUNT});
-  //
-  //   const accountBalanceBN = await tokenInstance.balanceOf(SEED_CONTRIBUTOR_ACCOUNT);
-  //   const accountBalance = (accountBalanceBN);
-  //
-  //   const allocationDataAfter = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
-  //   const allocationBalanceAfterRelease = (allocationDataAfter[ALLOCATION.balance]);
-  //   const balanceClaimedAfterRelease = (allocationDataAfter[ALLOCATION.balanceClaimed]);
-  //
-  //   // seed contributor allocation was originally 500 PTH if 3 months pass they
-  //   // should be allowed to withdraw 300 PTH
-  //   assert.equal(300, accountBalance, 'The seed contributor\'s ballance in their account is wrong');
-  //   assert.equal(300, balanceClaimedAfterRelease, 'The seed contributor\'s ballance in their allocation after releasing is wrong');
-  //   assert.equal(allocationBalanceBeforeRelease - accountBalance, allocationBalanceAfterRelease, 'The amount the contributor has in their account and allcation after is not matching');
-  //
-  // });
-  //
+  it('The seed contributor can release their vested amount', async ()=> {
+    const instance = await Distribution.deployed();
+
+    const vestingBefore = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
+    const contributorBalanceBefore = toBN(await web3.eth.getBalance(SEED_CONTRIBUTOR_ACCOUNT));
+
+    const tx = await instance.withdraw(SEED_CONTRIBUTOR_ACCOUNT, {from: SEED_CONTRIBUTOR_ACCOUNT});
+    const txCost = await calculateGasCost(tx.receipt.gasUsed);
+
+    const vestingAfter = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
+    const contributorBalanceAfter = toBN(await web3.eth.getBalance(SEED_CONTRIBUTOR_ACCOUNT));
+
+    // seed contributor allocation was originally 500 PTH if 3 months pass they
+    // should be allowed to withdraw 300 PTH
+    assert.equal(contributorBalanceAfter.toString(), contributorBalanceBefore.add(pht2wei('300').sub(txCost)).toString());
+    assert.equal(vestingAfter[VI.balanceInitial].toString(), vestingBefore[VI.balanceInitial].toString());
+    assert.equal(vestingAfter[VI.balanceRemaining].toString(), vestingBefore[VI.balanceRemaining].sub(pht2wei('300')).toString());
+    assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei('300').toString());
+  });
+
   // it('The founder can release their vested amount', async ()=> {
   //   const instance = await Distribution.deployed();
   //   const tokenInstance = await LightstreamsToken.deployed();
