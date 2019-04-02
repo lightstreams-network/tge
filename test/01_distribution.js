@@ -69,12 +69,12 @@ contract('Distribution', (accounts) => {
     const teamMemberAllocationData = await instance.vestings(TEAM_MEMBER_ACCOUNT);
     const teamSupplyAfter = await instance.AVAILABLE_TEAM_SUPPLY.call();
     const teamMemberAllocation = teamMemberAllocationData[VI.balanceInitial];
-    const totalAllocated = await instance.totalAllocated.call();
+    const projectSupplyDistributed = await instance.projectSupplyDistributed();
 
     assert.equal(AVAILABLE_TEAM_SUPPLY, wei2Ether(teamSupplyBefore));
     assert.equal(teamMemberAllocation.toString(), amount.toString());
     assert.equal(teamSupplyBefore.sub(teamMemberAllocation).toString(), teamSupplyAfter.toString());
-    assert.equal(amountPHT, wei2Ether(totalAllocated));
+    assert.equal(amountPHT.toString(), wei2Ether(projectSupplyDistributed).toString());
   });
 
   it('The owner can not create an allocation from the team supply greater than the amount allocated to it', async ()=> {
@@ -103,17 +103,19 @@ contract('Distribution', (accounts) => {
     const wei = pht2wei('500');
 
     const seedContributorSupplyBefore = await instance.AVAILABLE_SEED_CONTRIBUTORS_SUPPLY.call();
-    const totalAllocatedBefore = await instance.totalAllocated.call();
+    const projectSupplyDistributedBefore = await instance.projectSupplyDistributed();
+
     await instance.scheduleProjectVesting(SEED_CONTRIBUTOR_ACCOUNT, SEED_CONTRIBUTORS_SUPPLY_ID, {from: OWNER_ACCOUNT, value: wei});
+
     const seedContributorAllocationData = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
     const seedContributorSupplyAfter = await instance.AVAILABLE_SEED_CONTRIBUTORS_SUPPLY.call();
-    const totalAllocatedAfter = await instance.totalAllocated.call();
+    const projectSupplyDistributedAfter = await instance.projectSupplyDistributed();
     const seedContributorAllocation = seedContributorAllocationData[VI.balanceInitial];
 
     assert.equal(AVAILABLE_SEED_CONTRIBUTORS_SUPPLY, wei2Ether(seedContributorSupplyBefore));
     assert.equal(seedContributorAllocation.toString(), wei.toString());
     assert.equal(seedContributorSupplyBefore.sub(seedContributorAllocation).toString(), seedContributorSupplyAfter.toString());
-    assert.equal(totalAllocatedBefore.add(wei).toString(), totalAllocatedAfter.toString());
+    assert.equal(projectSupplyDistributedBefore.add(wei).toString(), projectSupplyDistributedAfter.toString());
   });
 
   // it('The owner can not create an allocation from the seed contributor supply greater than the amount allocated to it', async ()=> {
@@ -263,7 +265,7 @@ contract('Distribution', (accounts) => {
     const vestingBefore = await instance.vestings(TEAM_MEMBER_ACCOUNT);
     const memberBalanceBefore = toBN(await web3.eth.getBalance(TEAM_MEMBER_ACCOUNT));
 
-    const tx = await instance.release(TEAM_MEMBER_ACCOUNT, {from: TEAM_MEMBER_ACCOUNT});
+    const tx = await instance.withdraw(TEAM_MEMBER_ACCOUNT, {from: TEAM_MEMBER_ACCOUNT});
     const txCost = await calculateGasCost(tx.receipt.gasUsed);
 
     const vestingAfter = await instance.vestings(TEAM_MEMBER_ACCOUNT);

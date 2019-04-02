@@ -92,17 +92,33 @@ contract Distribution is Ownable, Vesting {
    * @notice Allow the owner of the contract to assign a new allocation from the sale pool.
    *
    * @param _beneficiary The recipient of the allocation
-   * @param _category The total supply the allocation will be taken from
+   * @param _bonus How many tokens out of the ones sent in "msg.value" should be scheduled for vesting as a bonus
    */
-  function schedulePrivateSaleVesting(address payable _beneficiary, uint256 _bonus, Category _category) onlyOwner public payable {
+  function schedulePrivateSaleVesting(address _beneficiary, uint256 _bonus) onlyOwner public payable {
     uint _amountIncludingBonus = msg.value;
     uint _amount = _amountIncludingBonus.sub(_bonus);
 
-    _validateSchedulePrivateSaleVesting(_beneficiary, _amount, _bonus);
+    _validateScheduleSaleVesting(_beneficiary, _amount, _bonus);
 
     setVestingSchedule(_beneficiary, _amount, _bonus, now, now + 150 days, 30 days, true);
 
     SALE_AVAILABLE_TOTAL_SUPPLY = SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amountIncludingBonus);
+  }
+
+  /**
+   * @notice Allow the owner of the contract to send part of sale tokens directly to public sale contributors without vesting.
+   *
+   * @param _beneficiary The recipient of the allocation
+   * @param _bonus How many tokens out of the ones sent in "msg.value" should be scheduled for vesting as a bonus
+   */
+  function transferToPublicSale(address payable _beneficiary, uint256 _bonus) onlyOwner public payable {
+    uint _amountIncludingBonus = msg.value;
+    uint _amount = _amountIncludingBonus.sub(_bonus);
+
+    _validateScheduleSaleVesting(_beneficiary, _amount, _bonus);
+
+    SALE_AVAILABLE_TOTAL_SUPPLY = SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amountIncludingBonus);
+    _beneficiary.transfer(_amountIncludingBonus);
   }
 
   function _validateScheduleProjectVesting(
@@ -121,7 +137,7 @@ contract Distribution is Ownable, Vesting {
     require(PROJECT_AVAILABLE_TOTAL_SUPPLY.sub(_amount) >= 0, 'project max supply reached');
   }
 
-  function _validateSchedulePrivateSaleVesting(
+  function _validateScheduleSaleVesting(
     address _beneficiary,
     uint256 _amount,
     uint256 _bonus
@@ -143,11 +159,11 @@ contract Distribution is Ownable, Vesting {
     require(SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amount).sub(_bonus) >= 0, 'sale max supply reached');
   }
 
-  function projectSupply() public view returns (uint256) {
+  function projectSupplyDistributed() public view returns (uint256) {
     return PROJECT_INITIAL_SUPPLY - PROJECT_AVAILABLE_TOTAL_SUPPLY;
   }
 
-  function saleSupply() public view returns (uint256) {
+  function saleSupplyDistributed() public view returns (uint256) {
     return SALE_INITIAL_SUPPLY - SALE_AVAILABLE_TOTAL_SUPPLY;
   }
 }

@@ -40,7 +40,7 @@ contract Vesting is Ownable {
    * @param _recipient address beneficiary/recipient tokens released to
    * @param _amount the number of tokens release
    */
-  event Released(address _recipient, uint256 _amount);
+  event Withdrawn(address _recipient, uint256 _amount);
 
   /**
    * Event for when the owner revokes the vesting of a contributor releasing any vested tokens to the beneficiary,
@@ -108,17 +108,18 @@ contract Vesting is Ownable {
 
   /**
    * @dev Allows the beneficiary of a vesting schedule to release vested tokens to their account/wallet
+   *
    * @param _beneficiary The address of the recipient of vested tokens
    */
-  function release(address payable _beneficiary) public {
-    require(vestings[_beneficiary].balanceRemaining > 0 || vestings[_beneficiary].bonusRemaining > 0);
+  function withdraw(address payable _beneficiary) public {
     require(msg.sender == _beneficiary);
+    require(vestings[_beneficiary].balanceRemaining > 0 || vestings[_beneficiary].bonusRemaining > 0);
 
     VestingSchedule memory vestingSchedule = vestings[_beneficiary];
 
     uint256 totalAmountVested = _calculateTotalAmountVested(_beneficiary, vestingSchedule.startTimestamp, vestingSchedule.endTimestamp, vestingSchedule.balanceInitial);
     uint256 amountWithdrawable = totalAmountVested.sub(vestingSchedule.balanceClaimed);
-    uint256 releasable = _withdrawalAllowed(amountWithdrawable,  vestingSchedule.startTimestamp, vestingSchedule.endTimestamp, vestingSchedule.lockPeriod, vestingSchedule.balanceInitial);
+    uint256 releasable = _withdrawalAllowed(amountWithdrawable, vestingSchedule.startTimestamp, vestingSchedule.endTimestamp, vestingSchedule.lockPeriod, vestingSchedule.balanceInitial);
 
     if (releasable > 0) {
       vestings[_beneficiary].balanceClaimed = vestingSchedule.balanceClaimed.add(releasable);
@@ -126,7 +127,7 @@ contract Vesting is Ownable {
 
       _beneficiary.transfer(releasable);
 
-      emit Released(_beneficiary, releasable);
+      emit Withdrawn(_beneficiary, releasable);
     }
 
     if (now > vestingSchedule.endTimestamp && vestingSchedule.bonusRemaining > 0) {
@@ -144,7 +145,7 @@ contract Vesting is Ownable {
         vestings[_beneficiary].bonusRemaining = vestingSchedule.bonusRemaining.sub(withdrawableBonus);
 
         _beneficiary.transfer(withdrawableBonus);
-        emit Released(_beneficiary, withdrawableBonus);
+        emit Withdrawn(_beneficiary, withdrawableBonus);
       }
     }
   }
@@ -180,7 +181,7 @@ contract Vesting is Ownable {
       uint256 totalRefundable = refundable.add(refundableBonus);
       _beneficiary.transfer(totalRefundable);
 
-      emit Released(_beneficiary, totalRefundable);
+      emit Withdrawn(_beneficiary, totalRefundable);
     }
 
     emit RevokedVesting(_beneficiary);
