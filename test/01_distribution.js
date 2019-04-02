@@ -37,7 +37,7 @@ contract('Distribution', (accounts) => {
     const SEED_CONTRIBUTOR_ACCOUNT = accounts[2];
     const FOUNDER_ACCOUNT = accounts[3];
     const PRIVATE_SALE_ACCOUNT = accounts[4];
-    const CONSULTANT_ACCOUNT = accounts[5];
+    const PUBLIC_SALE_ACCOUNT = accounts[5];
     const OTHER_ACCOUNT = accounts[6];
     const CONTRIBUTOR_1_ACCOUNT = accounts[7];
     const CONTRIBUTOR_2_ACCOUNT = accounts[8];
@@ -130,20 +130,40 @@ contract('Distribution', (accounts) => {
     const instance = await Distribution.deployed();
     const wei = pht2wei('500');
 
-    const saleContributorSupplyBefore = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
+    const saleSupplyBefore = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
     const saleSupplyDistributedBefore = await instance.saleSupplyDistributed();
 
     await instance.schedulePrivateSaleVesting(PRIVATE_SALE_ACCOUNT, 0, {from: OWNER_ACCOUNT, value: wei});
 
     const contributorAllocationData = await instance.vestings(PRIVATE_SALE_ACCOUNT);
-    const contributorSupplyAfter = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
-    const projectSupplyDistributedAfter = await instance.saleSupplyDistributed();
+    const saleSupplyAfter = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
+    const saleSupplyDistributedAfter = await instance.saleSupplyDistributed();
     const contributorAllocation = contributorAllocationData[VI.balanceInitial];
 
-    assert.equal(SALE_AVAILABLE_TOTAL_SUPPLY, wei2Ether(saleContributorSupplyBefore));
+    assert.equal(SALE_AVAILABLE_TOTAL_SUPPLY, wei2Ether(saleSupplyBefore));
     assert.equal(contributorAllocation.toString(), wei.toString());
-    assert.equal(contributorSupplyAfter.toString(), saleContributorSupplyBefore.sub(contributorAllocation).toString());
-    assert.equal(projectSupplyDistributedAfter.toString(), saleSupplyDistributedBefore.add(wei).toString());
+    assert.equal(saleSupplyAfter.toString(), saleSupplyBefore.sub(contributorAllocation).toString());
+    assert.equal(saleSupplyDistributedAfter.toString(), saleSupplyDistributedBefore.add(wei).toString());
+  });
+
+  it('The owner can create distribute tokens to public sale contributors directly without vesting including the bonus', async ()=> {
+    const instance = await Distribution.deployed();
+    const pht = pht2wei('11');
+    const phtBonus = pht2wei('1');
+
+    const saleSupplyBefore = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
+    const saleSupplyDistributedBefore = await instance.saleSupplyDistributed();
+    const balanceBefore = toBN(await web3.eth.getBalance(PUBLIC_SALE_ACCOUNT));
+
+    await instance.transferToPublicSale(PUBLIC_SALE_ACCOUNT, phtBonus, {from: OWNER_ACCOUNT, value: pht});
+
+    const saleSupplyAfter = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
+    const saleSupplyDistributedAfter = await instance.saleSupplyDistributed();
+    const balanceAfter = toBN(await web3.eth.getBalance(PUBLIC_SALE_ACCOUNT));
+
+    assert.equal(saleSupplyAfter.toString(), saleSupplyBefore.sub(pht).toString());
+    assert.equal(saleSupplyDistributedAfter.toString(), saleSupplyDistributedBefore.add(pht).toString());
+    assert.equal(balanceAfter.toString(), balanceBefore.add(pht).toString());
   });
 
   // it('The owner can create an allocation from the founders supply', async ()=> {
