@@ -8,7 +8,12 @@ npm i
 ## Running tests
 
 ### Ganache Manually
-Boot Ganache UI, configure port in truffle.js, put balance for every account to `100000000` PHTs and execute tests.
+Initialize Ganache GUI and configure it using same setting than `truffle.js`:
+- Balance for every account to `100000000` PHTs
+- Gas Price: 500000000000
+- Port: 7545
+
+Then, ready to run the test
 ```bash
 npm run test-ganache
 ```

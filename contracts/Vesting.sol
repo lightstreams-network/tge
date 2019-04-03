@@ -8,7 +8,7 @@ contract Vesting is Ownable {
   using SafeMath for uint256;
 
   // The total amount of revoked tokens
-  uint256 public revokedAmount = 0;
+  uint256 public revokedAmount;
 
   struct VestingSchedule {
     uint256 startTimestamp; // timestamp of when vesting begins
@@ -108,8 +108,8 @@ contract Vesting is Ownable {
       vestingSchedule.balanceClaimed);
 
     if (releasable > 0) {
-      vestingSchedule.balanceClaimed = vestingSchedule.balanceClaimed.add(releasable);
-      vestingSchedule.balanceRemaining = vestingSchedule.balanceRemaining.sub(releasable);
+      vestings[_beneficiary].balanceClaimed = vestingSchedule.balanceClaimed.add(releasable);
+      vestings[_beneficiary].balanceRemaining = vestingSchedule.balanceRemaining.sub(releasable);
 
       _beneficiary.transfer(releasable);
 
@@ -127,8 +127,8 @@ contract Vesting is Ownable {
       if (withdrawableBonus > 0) {
         emit LogInt('withdrawableBonus', withdrawableBonus);
 
-        vestingSchedule.bonusClaimed = vestingSchedule.bonusClaimed.add(withdrawableBonus);
-        vestingSchedule.bonusRemaining = vestingSchedule.bonusRemaining.sub(withdrawableBonus);
+        vestings[_beneficiary].bonusClaimed = vestingSchedule.bonusClaimed.add(withdrawableBonus);
+        vestings[_beneficiary].bonusRemaining = vestingSchedule.bonusRemaining.sub(withdrawableBonus);
 
         _beneficiary.transfer(withdrawableBonus);
         emit Withdrawn(_beneficiary, withdrawableBonus);
@@ -162,7 +162,7 @@ contract Vesting is Ownable {
 
     uint256 toProjectWalletFromBalanceInitial = vestingSchedule.balanceRemaining.sub(refundable);
     uint256 toProjectWalletFromBonusInitial = vestingSchedule.bonusInitial.sub(refundableBonus);
-    uint256 revokedAmount = revokedAmount.add(toProjectWalletFromBalanceInitial).add(toProjectWalletFromBonusInitial);
+    revokedAmount = revokedAmount.add(toProjectWalletFromBalanceInitial).add(toProjectWalletFromBonusInitial);
 
     vestings[_beneficiary].balanceClaimed = vestingSchedule.balanceClaimed.add(refundable);
     vestings[_beneficiary].balanceRemaining = 0;
@@ -186,14 +186,14 @@ contract Vesting is Ownable {
    * @param _beneficiary The recipient of the vestingSchedule
    * @param _nextBeneficiary The new recipient of the vestingSchedule
    */
-  function updateVestingSchedule(address _beneficiary, uint256 _nextBeneficiary) onlyOwner public {
+  function updateVestingBeneficiary(address _beneficiary, address _nextBeneficiary) onlyOwner public {
     VestingSchedule memory vestingSchedule = vestings[_beneficiary];
     require(vestingSchedule.balanceRemaining > 0 || vestingSchedule.bonusRemaining > 0);
     require(vestingSchedule.balanceClaimed == 0);
     require(vestingSchedule.startTimestamp != 0);
 
-    vestingSchedules[_nextBeneficiary] = vestingSchedule;
-    vestingSchedules[_beneficiary] = VestingSchedule();
+    vestings[_nextBeneficiary] = vestingSchedule;
+    delete vestings[_beneficiary];
 
     emit UpdateVesting(_beneficiary, _nextBeneficiary);
   }
@@ -203,11 +203,11 @@ contract Vesting is Ownable {
    * @param _recipient The address where the tokens should be sent
    * @param _amount Number of tokens to be transfer to recipient
    */
-  function transferRevokedTokens(address _recipient, uint256 _amount) public onlyOwner {
+  function transferRevokedTokens(address payable _recipient, uint256 _amount) public onlyOwner {
     require(_amount <= revokedAmount);
     require(_recipient != address(0));
     revokedAmount = revokedAmount.sub(_amount);
-    require(vestedToken.transfer(_recipient, _amount));
+    _recipient.transfer(_amount);
   }
 
   /**
@@ -246,7 +246,7 @@ contract Vesting is Ownable {
     uint256 totalAmountVested = _calculateTotalAmountVested(_startTimestamp, _endTimestamp, _balanceInitial);
     uint256 amountWithdrawable = totalAmountVested.sub(_balanceClaimed);
 
-    if (_balanceRemaining < amountWithdrawable) {
+    if (_balanceRemaining <= amountWithdrawable) {
       return _balanceRemaining;
     }
 

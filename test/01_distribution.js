@@ -402,7 +402,7 @@ contract('Distribution', (accounts) => {
     const newAddressBalanceBf = toBN(await web3.eth.getBalance(NEW_ACCOUNT));
     const contractBalanceBf = toBN(await web3.eth.getBalance(instance.address));
 
-    await instance.revokeVesting(SEED_CONTRIBUTOR_ACCOUNT, {from: OWNER_ACCOUNT});
+    await instance.revokeVestingSchedule(SEED_CONTRIBUTOR_ACCOUNT, {from: OWNER_ACCOUNT});
 
     const otherSupplyAf = await instance.AVAILABLE_OTHER_SUPPLY.call();
     const projectSupplyAf = await instance.PROJECT_AVAILABLE_TOTAL_SUPPLY.call();
