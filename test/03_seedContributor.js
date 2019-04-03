@@ -31,6 +31,8 @@ const {
 contract('Seed Contributor', (accounts) => {
   const OWNER_ACCOUNT = accounts[0];
   const SEED_CONTRIBUTOR_ACCOUNT = accounts[2];
+  const SEED_CONTRIBUTOR_ACCOUNT_2 = accounts[3];
+  const OTHER_ACCOUNT = accounts[9];
 
   const SEED_CONTRIBUTOR_ALLOCATION_PHT = 500;
 
@@ -107,7 +109,44 @@ contract('Seed Contributor', (accounts) => {
 
   it('The owner cannot revoke a seed contributor vesting', async () => {
     const instance = await Distribution.deployed();
-
     assert.isRejected(instance.revokeVestingSchedule(SEED_CONTRIBUTOR_ACCOUNT, { from: OWNER_ACCOUNT }));
+  });
+
+  it('Only owner updated beneficiary of a seed contributor vesting', async () => {
+    const instance = await Distribution.deployed();
+    assert.isRejected(instance.updateVestingBeneficiary(SEED_CONTRIBUTOR_ACCOUNT, SEED_CONTRIBUTOR_ACCOUNT_2, { from: OTHER_ACCOUNT }));
+  });
+
+  it('The owner cannot use beneficiary with another vesting schedule to update of a seed contributor vesting', async () => {
+    const instance = await Distribution.deployed();
+    await instance.scheduleProjectVesting(OTHER_ACCOUNT, SEED_CONTRIBUTORS_SUPPLY_ID, {
+      from: OWNER_ACCOUNT,
+      value: pht2wei('1')
+    });
+
+    assert.isRejected(instance.updateVestingBeneficiary(SEED_CONTRIBUTOR_ACCOUNT, OTHER_ACCOUNT, { from: OWNER_ACCOUNT }));
+  });
+
+  it('The owner can updated beneficiary of a seed contributor vesting', async () => {
+    const instance = await Distribution.deployed();
+    const vestingContributor1Before = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
+    const vestingContributor2Before = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT_2);
+    const expectedBalanceClaimed = '300';
+    const expectedBalanceInitial = SEED_CONTRIBUTOR_ALLOCATION_PHT.toString();
+
+    assert.notEqual(vestingContributor1Before[VI.startTimestamp].toString(), '0');
+    assert.equal(vestingContributor1Before[VI.balanceClaimed].toString(), pht2wei(expectedBalanceClaimed).toString());
+    assert.equal(vestingContributor1Before[VI.balanceInitial].toString(), pht2wei(expectedBalanceInitial).toString());
+    assert.equal(vestingContributor2Before[VI.startTimestamp].toString(), '0');
+
+    await instance.updateVestingBeneficiary(SEED_CONTRIBUTOR_ACCOUNT, SEED_CONTRIBUTOR_ACCOUNT_2, { from: OWNER_ACCOUNT });
+
+    const vestingContributor1After = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
+    const vestingContributor2After = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT_2);
+
+    assert.equal(vestingContributor1After[VI.startTimestamp].toString(), '0');
+    assert.notEqual(vestingContributor2After[VI.startTimestamp].toString(), '0');
+    assert.equal(vestingContributor2After[VI.balanceClaimed].toString(), pht2wei(expectedBalanceClaimed).toString());
+    assert.equal(vestingContributor2After[VI.balanceInitial].toString(), pht2wei(expectedBalanceInitial).toString());
   });
 });
