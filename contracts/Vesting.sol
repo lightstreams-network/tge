@@ -140,7 +140,7 @@ contract Vesting is Ownable {
    * @dev Allows the to revoke the vesting schedule for a contributor with a vesting schedule
    * @param _beneficiary Address of contributor with a vesting schedule to be revoked
    */
-  function revokeVestingSchedule(address payable _beneficiary) onlyOwner internal{
+  function revokeVestingSchedule(address payable _beneficiary) onlyOwner public {
     VestingSchedule memory vestingSchedule = vestings[_beneficiary];
     require(vestingSchedule.revocable == true);
     require(vestingSchedule.revoked == false);
@@ -191,6 +191,8 @@ contract Vesting is Ownable {
     require(vestingSchedule.balanceRemaining > 0 || vestingSchedule.bonusRemaining > 0);
     require(vestingSchedule.balanceClaimed == 0);
     require(vestingSchedule.startTimestamp != 0);
+    require(vestings[_nextBeneficiary].startTimestamp == 0, 'can not overwrite existing vesting');
+    require(vestings[_nextBeneficiary].balanceInitial == 0, 'can not overwrite existing vesting');
 
     vestings[_nextBeneficiary] = vestingSchedule;
     delete vestings[_beneficiary];
