@@ -78,6 +78,13 @@ contract('Distribution', (accounts) => {
     assert.equal(amountPHT.toString(), wei2Ether(projectSupplyDistributed).toString());
   });
 
+  it('Only owner can schedule new vesting', async ()=> {
+    const instance = await Distribution.deployed();
+    const PHT = web3.utils.toWei((100).toString(), 'ether');
+
+    assert.isRejected(instance.scheduleProjectVesting(CONTRIBUTOR_1_ACCOUNT, TEAM_SUPPLY_ID, {from: CONTRIBUTOR_1_ACCOUNT, value: PHT}));
+  });
+
   it('The owner can not create an allocation from the team supply greater than the amount allocated to it', async ()=> {
     const instance = await Distribution.deployed();
     const PHT = web3.utils.toWei((AVAILABLE_TEAM_SUPPLY + 100).toString(), 'ether');
