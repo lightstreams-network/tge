@@ -25,6 +25,7 @@ contract Distribution is Ownable, Vesting {
   uint256 public SALE_INITIAL_SUPPLY = 165000000 * decimalFactor;
   uint256 public SALE_AVAILABLE_TOTAL_SUPPLY = SALE_INITIAL_SUPPLY;
   uint256 private constant BONUS_MIN = 0;
+  uint256 private constant BONUS_MAX = 40;
 
   uint256 public openingTime;
 
@@ -60,12 +61,12 @@ contract Distribution is Ownable, Vesting {
       _validateScheduleProjectVesting(_beneficiary, _amount, AVAILABLE_SEED_CONTRIBUTORS_SUPPLY);
 
       AVAILABLE_SEED_CONTRIBUTORS_SUPPLY = AVAILABLE_SEED_CONTRIBUTORS_SUPPLY.sub(_amount);
-      setVestingSchedule(_beneficiary, _amount, 0, now, now + 150 days, 30 days, true);
+      setVestingSchedule(_beneficiary, _amount, 0, now, now + 150 days, 30 days, false);
     } else if (_category == Category.FOUNDERS) {
       _validateScheduleProjectVesting(_beneficiary, _amount, AVAILABLE_FOUNDERS_SUPPLY);
 
       AVAILABLE_FOUNDERS_SUPPLY = AVAILABLE_FOUNDERS_SUPPLY.sub(_amount);
-      setVestingSchedule(_beneficiary, _amount, 0, now, now + 720 days, 30 days, true);
+      setVestingSchedule(_beneficiary, _amount, 0, now, now + 720 days, 30 days, false);
     } else if (_category == Category.ADVISORS) {
       _validateScheduleProjectVesting(_beneficiary, _amount, AVAILABLE_ADVISORS_SUPPLY);
 
@@ -100,7 +101,7 @@ contract Distribution is Ownable, Vesting {
 
     _validateScheduleSaleVesting(_beneficiary, _amount, _bonus);
 
-    setVestingSchedule(_beneficiary, _amount, _bonus, now, now + 150 days, 30 days, true);
+    setVestingSchedule(_beneficiary, _amount, _bonus, now, now + 150 days, 30 days, false);
 
     SALE_AVAILABLE_TOTAL_SUPPLY = SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amountIncludingBonus);
   }
@@ -119,32 +120,6 @@ contract Distribution is Ownable, Vesting {
 
     SALE_AVAILABLE_TOTAL_SUPPLY = SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amountIncludingBonus);
     _beneficiary.transfer(_amountIncludingBonus);
-  }
-
-  function revokeVesting(address payable _beneficiary) onlyOwner public {
-    uint backToProjectWallet = _doRevokeVesting(_beneficiary);
-
-    AVAILABLE_OTHER_SUPPLY = AVAILABLE_OTHER_SUPPLY.add(backToProjectWallet);
-    PROJECT_AVAILABLE_TOTAL_SUPPLY = PROJECT_AVAILABLE_TOTAL_SUPPLY.add(backToProjectWallet);
-  }
-
-  /**
-   * @dev Allows the owner to transfer any tokens that have been revoked to be transfered to another address
-   * @param _recipient The address where the tokens should be sent
-   * @param _amount Number of tokens to be transfer to recipient
-   */
-  function transferRevokedTokens(address payable _recipient, uint256 _amount) public onlyOwner {
-    require(_amount <= revokedAmount);
-    require(_recipient != address(0));
-
-    require(PROJECT_AVAILABLE_TOTAL_SUPPLY.sub(_amount) >= 0, 'project max supply reached');
-    require(AVAILABLE_OTHER_SUPPLY.sub(_amount) >= 0, 'project other category max supply reached');
-
-    revokedAmount = revokedAmount.sub(_amount);
-    AVAILABLE_OTHER_SUPPLY = AVAILABLE_OTHER_SUPPLY.sub(_amount);
-    PROJECT_AVAILABLE_TOTAL_SUPPLY = PROJECT_AVAILABLE_TOTAL_SUPPLY.sub(_amount);
-
-    _recipient.transfer(_amount);
   }
 
   function _validateScheduleProjectVesting(
@@ -174,15 +149,19 @@ contract Distribution is Ownable, Vesting {
 
     require(_amount > 0, 'no enough tokens sent to allocate to beneficiary');
     require(_beneficiary != address(0));
+    require(SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amount).sub(_bonus) >= 0, 'sale max supply reached');
 
-    uint256 bonusMax = SafeMath.div(
-      SafeMath.mul(_amount, 40),
+    uint256 bonusMin = SafeMath.div(
+      SafeMath.mul(_amount, BONUS_MIN),
       100
     );
-    require(_bonus >= BONUS_MIN && _bonus <= bonusMax);
-    require(_bonus <= _amount);
 
-    require(SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amount).sub(_bonus) >= 0, 'sale max supply reached');
+    uint256 bonusMax = SafeMath.div(
+      SafeMath.mul(_amount, BONUS_MAX),
+      100
+    );
+
+    require(_bonus >= bonusMin && _bonus <= bonusMax);
   }
 
   function projectSupplyDistributed() public view returns (uint256) {

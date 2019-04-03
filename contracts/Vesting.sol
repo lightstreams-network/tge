@@ -49,6 +49,13 @@ contract Vesting is Ownable {
    */
   event RevokedVesting(address _beneficiary);
 
+  /**
+   * Event for when the owner updates the vesting of a contributor
+   * @param _beneficiary address of beneficiary vesting is being update for
+   * @param _newBeneficiary address of new beneficiary vesting is being update for
+   */
+  event UpdateVesting(address _beneficiary, address _newBeneficiary);
+
   event LogInt(string _type, uint _uint);
 
   constructor() public {
@@ -80,31 +87,7 @@ contract Vesting is Ownable {
 
     emit NewVesting(_beneficiary, _amount, _bonus);
   }
-  
-  function updateVestingSchedule(
-    address _beneficiary,
-    uint256 _amount,
-    uint256 _bonus,
-    uint256 startTimestamp,
-    uint256 endTimestamp,
-    uint256 lockPeriod,
-    bool revocable
-  ) public onlyOwner {
-    VestingSchedule memory vesting = vestings[_beneficiary];
-    require(vesting.startTimestamp != 0);
-    require(vesting.balanceInitial.sub(vesting.balanceClaimed) >= _amount);
-    require(vesting.bonusInitial.sub(vesting.bonusClaimed) >= _bonus);
-    
-    uint256 totalPurchaseDifference = vesting.balanceInitial.sub(vesting.balanceClaimed).sub(_amount);
-    uint256 totalBonusDifference = vesting.bonusInitial.sub(vesting.bonusClaimed).sub(_bonus);
 
-    // Todo: should increase the OTHER_SUPPLY in Distribution.sol like in case of a revoke
-    revokedAmount = revokedAmount.add(totalPurchaseDifference).add(totalBonusDifference);
-
-    vestings[_beneficiary] = VestingSchedule(startTimestamp, endTimestamp, lockPeriod, _amount, 0, _amount, _bonus, 0, _bonus, revocable, false);
-
-    emit NewVesting(_beneficiary, _amount, _bonus);
-  }
 
   /**
    * @dev Allows the beneficiary of a vesting schedule to release vested tokens to their account/wallet
@@ -113,17 +96,20 @@ contract Vesting is Ownable {
    */
   function withdraw(address payable _beneficiary) public {
     require(msg.sender == _beneficiary);
-    require(vestings[_beneficiary].balanceRemaining > 0 || vestings[_beneficiary].bonusRemaining > 0);
 
     VestingSchedule memory vestingSchedule = vestings[_beneficiary];
+    require(vestingSchedule.balanceRemaining > 0 || vestingSchedule.bonusRemaining > 0);
 
-    uint256 totalAmountVested = _calculateTotalAmountVested(_beneficiary, vestingSchedule.startTimestamp, vestingSchedule.endTimestamp, vestingSchedule.balanceInitial);
-    uint256 amountWithdrawable = totalAmountVested.sub(vestingSchedule.balanceClaimed);
-    uint256 releasable = _calculateBalanceWithdrawal(amountWithdrawable, vestingSchedule.startTimestamp, vestingSchedule.endTimestamp, vestingSchedule.lockPeriod, vestingSchedule.balanceInitial);
+    uint256 releasable = _calculateBalanceWithdrawal(vestingSchedule.startTimestamp,
+      vestingSchedule.endTimestamp,
+      vestingSchedule.lockPeriod,
+      vestingSchedule.balanceInitial,
+      vestingSchedule.balanceRemaining,
+      vestingSchedule.balanceClaimed);
 
     if (releasable > 0) {
-      vestings[_beneficiary].balanceClaimed = vestingSchedule.balanceClaimed.add(releasable);
-      vestings[_beneficiary].balanceRemaining = vestingSchedule.balanceRemaining.sub(releasable);
+      vestingSchedule.balanceClaimed = vestingSchedule.balanceClaimed.add(releasable);
+      vestingSchedule.balanceRemaining = vestingSchedule.balanceRemaining.sub(releasable);
 
       _beneficiary.transfer(releasable);
 
@@ -140,9 +126,9 @@ contract Vesting is Ownable {
   
       if (withdrawableBonus > 0) {
         emit LogInt('withdrawableBonus', withdrawableBonus);
-    
-        vestings[_beneficiary].bonusClaimed = vestingSchedule.bonusClaimed.add(withdrawableBonus);
-        vestings[_beneficiary].bonusRemaining = vestingSchedule.bonusRemaining.sub(withdrawableBonus);
+
+        vestingSchedule.bonusClaimed = vestingSchedule.bonusClaimed.add(withdrawableBonus);
+        vestingSchedule.bonusRemaining = vestingSchedule.bonusRemaining.sub(withdrawableBonus);
 
         _beneficiary.transfer(withdrawableBonus);
         emit Withdrawn(_beneficiary, withdrawableBonus);
@@ -154,22 +140,29 @@ contract Vesting is Ownable {
    * @dev Allows the to revoke the vesting schedule for a contributor with a vesting schedule
    * @param _beneficiary Address of contributor with a vesting schedule to be revoked
    */
-  function _doRevokeVesting(address payable _beneficiary) onlyOwner internal returns(uint backToProjectWallet) {
-    require(vestings[_beneficiary].revocable == true);
-
+  function revokeVestingSchedule(address payable _beneficiary) onlyOwner internal{
     VestingSchedule memory vestingSchedule = vestings[_beneficiary];
+    require(vestingSchedule.revocable == true);
+    require(vestingSchedule.revoked == false);
 
-    uint256 totalAmountVested = _calculateTotalAmountVested(_beneficiary, vestingSchedule.startTimestamp, vestingSchedule.endTimestamp, vestingSchedule.balanceInitial);
-    uint256 amountWithdrawable = totalAmountVested.sub(vestingSchedule.balanceClaimed);
+    uint256 refundable = _calculateBalanceWithdrawal(
+      vestingSchedule.startTimestamp,
+      vestingSchedule.endTimestamp,
+      vestingSchedule.lockPeriod,
+      vestingSchedule.balanceInitial,
+      vestingSchedule.balanceRemaining,
+      vestingSchedule.balanceClaimed);
 
-    uint256 refundable = _calculateBalanceWithdrawal(amountWithdrawable,  vestingSchedule.startTimestamp, vestingSchedule.endTimestamp, vestingSchedule.lockPeriod, vestingSchedule.balanceInitial);
-    uint256 refundableBonus = _calculateBonusWithdrawal(vestingSchedule.startTimestamp, vestingSchedule.endTimestamp, vestingSchedule.lockPeriod, vestingSchedule.balanceInitial, vestingSchedule.bonusRemaining);
+    uint256 refundableBonus = _calculateBonusWithdrawal(
+      vestingSchedule.startTimestamp,
+      vestingSchedule.endTimestamp,
+      vestingSchedule.lockPeriod,
+      vestingSchedule.balanceInitial,
+      vestingSchedule.bonusRemaining);
 
-    uint256 toProjectWalletFrombalanceInitial = vestingSchedule.balanceRemaining.sub(refundable);
-    uint256 toProjectWalletFrombonusInitial = vestingSchedule.bonusInitial.sub(refundableBonus);
-    uint256 backToProjectWallet = toProjectWalletFrombalanceInitial.add(toProjectWalletFrombonusInitial);
-
-    revokedAmount = revokedAmount.add(backToProjectWallet);
+    uint256 toProjectWalletFromBalanceInitial = vestingSchedule.balanceRemaining.sub(refundable);
+    uint256 toProjectWalletFromBonusInitial = vestingSchedule.bonusInitial.sub(refundableBonus);
+    uint256 revokedAmount = revokedAmount.add(toProjectWalletFromBalanceInitial).add(toProjectWalletFromBonusInitial);
 
     vestings[_beneficiary].balanceClaimed = vestingSchedule.balanceClaimed.add(refundable);
     vestings[_beneficiary].balanceRemaining = 0;
@@ -185,18 +178,46 @@ contract Vesting is Ownable {
     }
 
     emit RevokedVesting(_beneficiary);
+  }
 
-    return backToProjectWallet;
+  /**
+   * @dev Allow the owner of the contract to update the beneficiary of a vesting schedule
+   *
+   * @param _beneficiary The recipient of the vestingSchedule
+   * @param _nextBeneficiary The new recipient of the vestingSchedule
+   */
+  function updateVestingSchedule(address _beneficiary, uint256 _nextBeneficiary) onlyOwner public {
+    VestingSchedule memory vestingSchedule = vestings[_beneficiary];
+    require(vestingSchedule.balanceRemaining > 0 || vestingSchedule.bonusRemaining > 0);
+    require(vestingSchedule.balanceClaimed == 0);
+    require(vestingSchedule.startTimestamp != 0);
+
+    vestingSchedules[_nextBeneficiary] = vestingSchedule;
+    vestingSchedules[_beneficiary] = VestingSchedule();
+
+    emit UpdateVesting(_beneficiary, _nextBeneficiary);
+  }
+
+  /**
+   * @dev Allows the owner to transfer any tokens that have been revoked to be transfered to another address
+   * @param _recipient The address where the tokens should be sent
+   * @param _amount Number of tokens to be transfer to recipient
+   */
+  function transferRevokedTokens(address _recipient, uint256 _amount) public onlyOwner {
+    require(_amount <= revokedAmount);
+    require(_recipient != address(0));
+    revokedAmount = revokedAmount.sub(_amount);
+    require(vestedToken.transfer(_recipient, _amount));
   }
 
   /**
    * @dev Calculates the total amount vested since the start time. If after the endTime
    * the entire balanceRemaining is returned
    */
-  function _calculateTotalAmountVested(address _beneficiary, uint256 _startTimestamp, uint256 _endTimestamp, uint256 _balanceInitial) internal view returns (uint256 _amountVested) {
+  function _calculateTotalAmountVested(uint256 _startTimestamp, uint256 _endTimestamp, uint256 _balanceInitial) internal view returns (uint256 _amountVested) {
     // If it's past the end time, the whole amount is available.
     if (now >= _endTimestamp) {
-      return vestings[_beneficiary].balanceInitial;
+      return _balanceInitial;
     }
 
     // get the amount of time that passed since the start of vesting
@@ -216,25 +237,32 @@ contract Vesting is Ownable {
    * @dev Calculates the amount releasable. If the amount is less than the allowable amount
    * for each lock period zero will be returned. If more than the allowable amount each month will return
    * a multiple of the allowable amount each month
-   * @param _amountWithdrawable The total amount vested so far less the amount that has been released so far
    * @param _startTimestamp The start time of for when vesting started
    * @param _endTimestamp The end time of for when vesting will be complete and all tokens available
    * @param _lockPeriod time interval (in seconds) in between vesting releases (example 30 days = 2592000 seconds)
    * @param _balanceInitial The starting number of tokens vested
    */
-  function _calculateBalanceWithdrawal(uint256 _amountWithdrawable, uint256 _startTimestamp, uint256 _endTimestamp, uint256 _lockPeriod, uint256 _balanceInitial) internal view returns(uint256 _amountReleasable) {
+  function _calculateBalanceWithdrawal(uint256 _startTimestamp, uint256 _endTimestamp, uint256 _lockPeriod, uint256 _balanceInitial, uint256 _balanceRemaining, uint256 _balanceClaimed) internal view returns(uint256 _amountReleasable) {
+    uint256 totalAmountVested = _calculateTotalAmountVested(_startTimestamp, _endTimestamp, _balanceInitial);
+    uint256 amountWithdrawable = totalAmountVested.sub(_balanceClaimed);
+
+    if (_balanceRemaining < amountWithdrawable) {
+      return _balanceRemaining;
+    }
+
     // If it's past the end time, the whole amount is available.
     if (now >= _endTimestamp) {
-      return _amountWithdrawable;
+      return amountWithdrawable;
     }
+
     // calculate the number of time periods vesting is done over
     uint256 lockPeriods = (_endTimestamp.sub(_startTimestamp)).div(_lockPeriod);
     uint256 amountWithdrawablePerLockPeriod = SafeMath.div(_balanceInitial, lockPeriods);
 
     // get the remainder and subtract it from the amount amount withdrawable to get a multiple of the
     // amount withdrawable per lock period
-    uint256 remainder = SafeMath.mod(_amountWithdrawable, amountWithdrawablePerLockPeriod);
-    uint256 amountReleasable = _amountWithdrawable.sub(remainder);
+    uint256 remainder = SafeMath.mod(amountWithdrawable, amountWithdrawablePerLockPeriod);
+    uint256 amountReleasable = amountWithdrawable.sub(remainder);
 
     if (now < _endTimestamp && amountReleasable >= amountWithdrawablePerLockPeriod) {
       return amountReleasable;
@@ -247,7 +275,6 @@ contract Vesting is Ownable {
    * @dev Calculates the amount of the bonus that is releasable. If the amount is less than the allowable amount
    * for each lock period zero will be returned. It has been 30 days since the initial vesting has ended an amount
    * equal to the original releases will be returned.  If over 60 days the entire bonus can be released
-   * @param _amountWithdrawable The total amount vested so far less the amount that has been released so far
    * @param _startTimestamp The start time of for when vesting started
    * @param _endTimestamp The end time of for when vesting will be complete and all tokens available
    * @param _lockPeriod time interval (ins seconds) in between vesting releases (example 30 days = 2592000 seconds)
