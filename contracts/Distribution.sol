@@ -125,6 +125,7 @@ contract Distribution is Ownable, Vesting {
     uint backToProjectWallet = _doRevokeVesting(_beneficiary);
 
     AVAILABLE_OTHER_SUPPLY = AVAILABLE_OTHER_SUPPLY.add(backToProjectWallet);
+    PROJECT_AVAILABLE_TOTAL_SUPPLY = PROJECT_AVAILABLE_TOTAL_SUPPLY.add(backToProjectWallet);
   }
 
   /**
@@ -136,8 +137,12 @@ contract Distribution is Ownable, Vesting {
     require(_amount <= revokedAmount);
     require(_recipient != address(0));
 
+    require(PROJECT_AVAILABLE_TOTAL_SUPPLY.sub(_amount) >= 0, 'project max supply reached');
+    require(AVAILABLE_OTHER_SUPPLY.sub(_amount) >= 0, 'project other category max supply reached');
+
     revokedAmount = revokedAmount.sub(_amount);
     AVAILABLE_OTHER_SUPPLY = AVAILABLE_OTHER_SUPPLY.sub(_amount);
+    PROJECT_AVAILABLE_TOTAL_SUPPLY = PROJECT_AVAILABLE_TOTAL_SUPPLY.sub(_amount);
 
     _recipient.transfer(_amount);
   }

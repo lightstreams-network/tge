@@ -396,6 +396,7 @@ contract('Distribution', (accounts) => {
 
     const revokedAmountBf = await instance.revokedAmount.call();
     const otherSupplyBf = await instance.AVAILABLE_OTHER_SUPPLY.call();
+    const projectSupplyBf = await instance.PROJECT_AVAILABLE_TOTAL_SUPPLY.call();
     const vestingBf = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
     const contributorBalanceBf = toBN(await web3.eth.getBalance(SEED_CONTRIBUTOR_ACCOUNT));
     const newAddressBalanceBf = toBN(await web3.eth.getBalance(NEW_ACCOUNT));
@@ -404,6 +405,7 @@ contract('Distribution', (accounts) => {
     await instance.revokeVesting(SEED_CONTRIBUTOR_ACCOUNT, {from: OWNER_ACCOUNT});
 
     const otherSupplyAf = await instance.AVAILABLE_OTHER_SUPPLY.call();
+    const projectSupplyAf = await instance.PROJECT_AVAILABLE_TOTAL_SUPPLY.call();
     const vestingAf = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
     const contributorBalanceAf = toBN(await web3.eth.getBalance(SEED_CONTRIBUTOR_ACCOUNT));
     let   revokedAmountAf = await instance.revokedAmount.call();
@@ -421,6 +423,7 @@ contract('Distribution', (accounts) => {
     assert.equal(vestingAf[VI.bonusRemaining], 0);
     assert.equal(contributorBalanceAf.toString(), contributorBalanceBf.add(pht2wei(100)).toString());
     assert.equal(otherSupplyAf.toString(), otherSupplyBf.add(pht2wei(100)).toString());
+    assert.equal(projectSupplyAf.toString(), projectSupplyBf.add(pht2wei(100)).toString());
     assert.equal(contractBalanceAf.toString(), contractBalanceBf.sub(pht2wei(100)).toString());
 
     // We can now transfer e.g 50 tokens to any address out of 100 revoked, available in contract
