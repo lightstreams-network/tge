@@ -301,7 +301,7 @@ contract('Distribution', (accounts) => {
   it('The team member can release their vested amount', async ()=> {
     const instance = await Distribution.deployed();
 
-    await timeTravel(30 * 3); // Travel 3 months into the future for testing
+    await timeTravel(30 * 3 + 15); // 3 months + 15 days (to test periods with mod)
     const vestingBefore = await instance.vestings(TEAM_MEMBER_ACCOUNT);
     const memberBalanceBefore = toBN(await web3.eth.getBalance(TEAM_MEMBER_ACCOUNT));
 
