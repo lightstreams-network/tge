@@ -28,7 +28,6 @@ contract('Private Sale Contributor', (accounts) => {
   const OWNER_ACCOUNT = accounts[0];
   const PRIVATE_SALE_ACCOUNT = accounts[1];
   const PRIVATE_SALE_ACCOUNT_2 = accounts[2];
-  const PRIVATE_SALE_ACCOUNT_3 = accounts[3];
 
   const PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT = 500;
   const PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_BONUS_PHT = 150;
@@ -42,8 +41,18 @@ contract('Private Sale Contributor', (accounts) => {
     const amountWei = pht2wei(PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT.toString());
     const bonusAmountWei = pht2wei(PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_BONUS_PHT.toString());
 
-    return assert.isRejected(instance.schedulePrivateSaleVesting(PRIVATE_SALE_ACCOUNT_3, bonusAmountWei,
+    return assert.isRejected(instance.schedulePrivateSaleVesting(PRIVATE_SALE_ACCOUNT, bonusAmountWei,
       { from: OWNER_ACCOUNT, value: amountWei }));
+  });
+
+  it('The owner cannot create an allocation for private contributor with more than 40% bonus', async () => {
+    const instance = await Distribution.deployed();
+    const exceedBonus = PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT * 0.41;
+    const bonusAmountWei = pht2wei(exceedBonus.toString());
+    const totalAmountWei = pht2wei((exceedBonus + PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT).toString());
+
+    return assert.isRejected(instance.schedulePrivateSaleVesting(PRIVATE_SALE_ACCOUNT, bonusAmountWei,
+      { from: OWNER_ACCOUNT, value: totalAmountWei }));
   });
 
   it('The owner can create an allocation for private contributors from sale supply with vesting an without bonus', async () => {
@@ -91,6 +100,11 @@ contract('Private Sale Contributor', (accounts) => {
 
   it('Should travel 3 months to test periods withdraws', async () => {
     assert.isFulfilled(timeTravel(30 * 3));
+  });
+
+  it('The owner cannot revoke a private contributor vesting', async () => {
+    const instance = await Distribution.deployed();
+    return assert.isRejected(instance.revokeVestingSchedule(PRIVATE_SALE_ACCOUNT, { from: OWNER_ACCOUNT }));
   });
 
   it('The private sale contributor can release their vested amount', async () => {
