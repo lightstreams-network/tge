@@ -161,7 +161,7 @@ contract('Seed Contributor', (accounts) => {
   });
 
   it('Should travel 60 days to test next period withdraws', async () => {
-    assert.isFulfilled(timeTravel(30 * 2));
+    assert.isFulfilled(timeTravel((30 * 2) + 15));
   });
 
   it('The seed contributor account can released remaining vested tokens', async () => {
