@@ -1,7 +1,7 @@
-pragma solidity >=0.5.0 <0.7.0;
+pragma solidity ^0.5.0;
 
-import './SafeMath.sol';
-import './Ownable.sol';
+import './utils/SafeMath.sol';
+import './utils/Ownable.sol';
 
 /// @title Monthly vesting with bonus
 contract Vesting is Ownable {

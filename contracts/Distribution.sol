@@ -1,8 +1,8 @@
-pragma solidity >=0.5.0 <0.7.0;
+pragma solidity ^0.5.0;
 
+import './utils/SafeMath.sol';
+import "./utils/Ownable.sol";
 import './Vesting.sol';
-import './SafeMath.sol';
-import "./Ownable.sol";
 
 contract Distribution is Ownable, Vesting {
   using SafeMath for uint256;
