@@ -99,7 +99,7 @@ contract Distribution is Ownable, Vesting {
     uint _amountIncludingBonus = msg.value;
     uint _amount = _amountIncludingBonus.sub(_bonus);
 
-    _validateScheduleSaleVesting(_beneficiary, _amount, _bonus);
+    _validatePrivateSaleVesting(_beneficiary, _amount, _bonus);
 
     setVestingSchedule(_beneficiary, _amount, _bonus, now, now + 150 days, 30 days, false);
 
@@ -110,16 +110,14 @@ contract Distribution is Ownable, Vesting {
    * @notice Allow the owner of the contract to send part of sale tokens directly to public sale contributors without vesting.
    *
    * @param _beneficiary The recipient of the allocation
-   * @param _bonus How many tokens out of the ones sent in "msg.value" should be scheduled for vesting as a bonus
    */
-  function transferToPublicSale(address payable _beneficiary, uint256 _bonus) onlyOwner public payable {
-    uint _amountIncludingBonus = msg.value;
-    uint _amount = _amountIncludingBonus.sub(_bonus);
+  function transferToPublicSale(address payable _beneficiary) onlyOwner public payable {
+    uint _amount = msg.value;
 
-    _validateScheduleSaleVesting(_beneficiary, _amount, _bonus);
+    _validatePublicSaleTransfer(_beneficiary, _amount);
 
-    SALE_AVAILABLE_TOTAL_SUPPLY = SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amountIncludingBonus);
-    _beneficiary.transfer(_amountIncludingBonus);
+    SALE_AVAILABLE_TOTAL_SUPPLY = SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amount);
+    _beneficiary.transfer(_amount);
   }
 
   function _validateScheduleProjectVesting(
@@ -138,7 +136,7 @@ contract Distribution is Ownable, Vesting {
     require(PROJECT_AVAILABLE_TOTAL_SUPPLY.sub(_amount) >= 0, 'project max supply reached');
   }
 
-  function _validateScheduleSaleVesting(
+  function _validatePrivateSaleVesting(
     address _beneficiary,
     uint256 _amount,
     uint256 _bonus
@@ -162,6 +160,19 @@ contract Distribution is Ownable, Vesting {
     );
 
     require(_bonus >= bonusMin && _bonus <= bonusMax);
+  }
+
+  function _validatePublicSaleTransfer(
+    address _beneficiary,
+    uint256 _amount
+  )
+  internal view
+  {
+    require(openingTime <= now);
+
+    require(_amount > 0, 'no enough tokens sent to allocate to beneficiary');
+    require(_beneficiary != address(0));
+    require(SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amount) >= 0, 'sale max supply reached');
   }
 
   function projectSupplyDistributed() public view returns (uint256) {
