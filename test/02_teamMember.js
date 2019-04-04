@@ -11,7 +11,7 @@ const assert = chai.assert;
 
 const {
   timeTravel,
-  wei2Ether,
+  wei2pht,
   pht2wei,
   toBN,
   calculateGasCost,
@@ -41,21 +41,21 @@ contract('Team', (accounts) => {
     const instance = await Distribution.deployed();
     const amount = web3.utils.toWei('1', 'ether');
 
-    assert.isRejected(instance.scheduleProjectVesting(TEAM_MEMBER_ACCOUNT, TEAM_SUPPLY_ID, {
+    return assert.isRejected(instance.scheduleProjectVesting(TEAM_MEMBER_ACCOUNT, TEAM_SUPPLY_ID, {
       from: OWNER_ACCOUNT,
       value: amount
     }));
   });
 
   it('Should travel 1 day in the future so the vesting periods can be scheduled', async () => {
-    assert.isFulfilled(timeTravel(1));
+    return assert.isFulfilled(timeTravel(1));
   });
 
   it('The owner can not create an allocation from the team supply greater than the amount allocated to it', async () => {
     const instance = await Distribution.deployed();
     const amountPHT = web3.utils.toWei((AVAILABLE_TEAM_SUPPLY + 100).toString(), 'ether');
 
-    assert.isRejected(instance.scheduleProjectVesting(OTHER_ACCOUNT, TEAM_SUPPLY_ID, {
+    return assert.isRejected(instance.scheduleProjectVesting(OTHER_ACCOUNT, TEAM_SUPPLY_ID, {
       from: OWNER_ACCOUNT,
       value: amountPHT
     }));
@@ -86,10 +86,10 @@ contract('Team', (accounts) => {
     const teamMemberAllocation = teamMemberAllocationData[VI.balanceInitial];
     const projectSupplyDistributed = await instance.projectSupplyDistributed();
 
-    assert.equal(AVAILABLE_TEAM_SUPPLY, wei2Ether(teamSupplyBefore));
+    assert.equal(AVAILABLE_TEAM_SUPPLY, wei2pht(teamSupplyBefore));
     assert.equal(teamMemberAllocation.toString(), amountWei.toString());
     assert.equal(teamSupplyBefore.sub(teamMemberAllocation).toString(), teamSupplyAfter.toString());
-    assert.equal(amountPHT, wei2Ether(projectSupplyDistributed).toString());
+    assert.equal(amountPHT, wei2pht(projectSupplyDistributed).toString());
   });
 
   it('The owner can not create an allocation for an address that already has an allocation', async () => {
@@ -108,7 +108,7 @@ contract('Team', (accounts) => {
 
   it('Only beneficiary itself can release its vested amount', async () => {
     const instance = await Distribution.deployed();
-    assert.isRejected(instance.withdraw(TEAM_MEMBER_ACCOUNT, { from: OTHER_ACCOUNT }));
+    return assert.isRejected(instance.withdraw(TEAM_MEMBER_ACCOUNT, { from: OTHER_ACCOUNT }));
   });
 
   it('The team member can release their vested amount', async () => {

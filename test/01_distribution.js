@@ -4,7 +4,7 @@ const assert = chai.assert;
 
 const {
     timeTravel,
-    wei2Ether,
+    wei2pht,
     pht2wei,
     toBN,
     calculateGasCost,
@@ -58,7 +58,7 @@ contract('Distribution', (accounts) => {
     const instance = await Distribution.deployed();
     const PHT = web3.utils.toWei((100).toString(), 'ether');
 
-    assert.isRejected(instance.scheduleProjectVesting(CONTRIBUTOR_1_ACCOUNT, TEAM_SUPPLY_ID, {from: CONTRIBUTOR_1_ACCOUNT, value: PHT}));
+    return assert.isRejected(instance.scheduleProjectVesting(CONTRIBUTOR_1_ACCOUNT, TEAM_SUPPLY_ID, {from: CONTRIBUTOR_1_ACCOUNT, value: PHT}));
   });
 
 

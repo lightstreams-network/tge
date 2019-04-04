@@ -11,7 +11,7 @@ const assert = chai.assert;
 
 const {
   timeTravel,
-  wei2Ether,
+  wei2pht,
   pht2wei,
   toBN,
   calculateGasCost,

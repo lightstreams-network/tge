@@ -69,7 +69,7 @@ const VI = {
 
 module.exports = {
   timeTravel,
-  wei2Ether: wei2Pht,
+  wei2pht: wei2Pht,
   pht2wei: pht2Wei,
   toBN: toBN,
   calculateGasCost: calculateGasCost,

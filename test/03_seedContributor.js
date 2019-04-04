@@ -11,7 +11,7 @@ const assert = chai.assert;
 
 const {
   timeTravel,
-  wei2Ether,
+  wei2pht,
   pht2wei,
   toBN,
   calculateGasCost,
@@ -68,7 +68,7 @@ contract('Seed Contributor', (accounts) => {
     const projectSupplyDistributedAfter = await instance.projectSupplyDistributed();
     const seedContributorAllocation = seedContributorAllocationData[VI.balanceInitial];
 
-    assert.equal(AVAILABLE_SEED_CONTRIBUTORS_SUPPLY, wei2Ether(seedContributorSupplyBefore));
+    assert.equal(AVAILABLE_SEED_CONTRIBUTORS_SUPPLY, wei2pht(seedContributorSupplyBefore));
     assert.equal(seedContributorAllocation.toString(), amountWei.toString());
     assert.equal(seedContributorSupplyAfter.toString(), seedContributorSupplyBefore.sub(seedContributorAllocation).toString());
     assert.equal(projectSupplyDistributedAfter.toString(), projectSupplyDistributedBefore.add(amountWei).toString());
@@ -80,7 +80,7 @@ contract('Seed Contributor', (accounts) => {
 
   it('The owner cannot revoke a seed contributor vesting', async () => {
     const instance = await Distribution.deployed();
-    assert.isRejected(instance.revokeVestingSchedule(SEED_CONTRIBUTOR_ACCOUNT, { from: OWNER_ACCOUNT }));
+    return assert.isRejected(instance.revokeVestingSchedule(SEED_CONTRIBUTOR_ACCOUNT, { from: OWNER_ACCOUNT }));
   });
 
   it('The seed contributor can release their vested amount', async () => {
@@ -110,12 +110,12 @@ contract('Seed Contributor', (accounts) => {
 
   it('The owner cannot revoke a seed contributor vesting', async () => {
     const instance = await Distribution.deployed();
-    assert.isRejected(instance.revokeVestingSchedule(SEED_CONTRIBUTOR_ACCOUNT, { from: OWNER_ACCOUNT }));
+    return assert.isRejected(instance.revokeVestingSchedule(SEED_CONTRIBUTOR_ACCOUNT, { from: OWNER_ACCOUNT }));
   });
 
   it('Only owner updated beneficiary of a seed contributor vesting', async () => {
     const instance = await Distribution.deployed();
-    assert.isRejected(instance.updateVestingBeneficiary(SEED_CONTRIBUTOR_ACCOUNT, SEED_CONTRIBUTOR_ACCOUNT_2, { from: OTHER_ACCOUNT }));
+    return assert.isRejected(instance.updateVestingBeneficiary(SEED_CONTRIBUTOR_ACCOUNT, SEED_CONTRIBUTOR_ACCOUNT_2, { from: OTHER_ACCOUNT }));
   });
 
   it('The owner cannot use beneficiary with another vesting schedule to update of a seed contributor vesting', async () => {
@@ -125,12 +125,12 @@ contract('Seed Contributor', (accounts) => {
       value: pht2wei('1')
     });
 
-    assert.isRejected(instance.updateVestingBeneficiary(SEED_CONTRIBUTOR_ACCOUNT, OTHER_ACCOUNT, { from: OWNER_ACCOUNT }));
+    return assert.isRejected(instance.updateVestingBeneficiary(SEED_CONTRIBUTOR_ACCOUNT, OTHER_ACCOUNT, { from: OWNER_ACCOUNT }));
   });
 
   it('The owner cannot updated beneficiary of a seed contributor vesting after withdrawn', async () => {
     const instance = await Distribution.deployed();
-    assert.isRejected(instance.updateVestingBeneficiary(SEED_CONTRIBUTOR_ACCOUNT, SEED_CONTRIBUTOR_ACCOUNT_2, { from: OWNER_ACCOUNT }));
+    return assert.isRejected(instance.updateVestingBeneficiary(SEED_CONTRIBUTOR_ACCOUNT, SEED_CONTRIBUTOR_ACCOUNT_2, { from: OWNER_ACCOUNT }));
   });
 
   it('The owner can updated beneficiary of a seed contributor vesting', async () => {
@@ -185,12 +185,12 @@ contract('Seed Contributor', (accounts) => {
 
   it('The seed contributor account cannot released more tokens', async () => {
     const instance = await Distribution.deployed();
-    assert.isRejected(instance.withdraw(SEED_CONTRIBUTOR_ACCOUNT, { from: SEED_CONTRIBUTOR_ACCOUNT }));
+    return assert.isRejected(instance.withdraw(SEED_CONTRIBUTOR_ACCOUNT, { from: SEED_CONTRIBUTOR_ACCOUNT }));
   });
 
   it('The former seed contributor account cannot released vested tokens', async () => {
     const instance = await Distribution.deployed();
-    assert.isRejected(instance.withdraw(SEED_CONTRIBUTOR_ACCOUNT_2, { from: SEED_CONTRIBUTOR_ACCOUNT_2 }));
+    return assert.isRejected(instance.withdraw(SEED_CONTRIBUTOR_ACCOUNT_2, { from: SEED_CONTRIBUTOR_ACCOUNT_2 }));
   });
 
   it('The new seed contributor account cannot released more tokens', async () => {
