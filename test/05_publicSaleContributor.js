@@ -32,13 +32,6 @@ contract('Public Sale Contributor', (accounts) => {
 
   const PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT = 100;
 
-  it('The owner cannot create distribute tokens to public sale before allocation distribution starts', async () => {
-    const instance = await Distribution.deployed();
-    const amountWei = pht2wei(PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT.toString());
-    return assert.isRejected(instance.transferToPublicSale(PUBLIC_SALE_ACCOUNT,
-      { from: OWNER_ACCOUNT, value: amountWei }));
-  });
-
   it('Should travel 1 day in the future so the vesting periods can be scheduled', async () => {
     assert.isFulfilled(timeTravel(1));
   });

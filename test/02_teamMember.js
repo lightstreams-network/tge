@@ -37,16 +37,6 @@ contract('Team', (accounts) => {
 
   const TEAM_MEMBER_ALLOCATION_PHT = 240;
 
-  it('The owner can not create an allocation before allocation distribution starts', async () => {
-    const instance = await Distribution.deployed();
-    const amount = web3.utils.toWei('1', 'ether');
-
-    return assert.isRejected(instance.scheduleProjectVesting(TEAM_MEMBER_ACCOUNT, TEAM_SUPPLY_ID, {
-      from: OWNER_ACCOUNT,
-      value: amount
-    }));
-  });
-
   it('Should travel 1 day in the future so the vesting periods can be scheduled', async () => {
     return assert.isFulfilled(timeTravel(1));
   });
@@ -57,16 +47,6 @@ contract('Team', (accounts) => {
 
     return assert.isRejected(instance.scheduleProjectVesting(OTHER_ACCOUNT, TEAM_SUPPLY_ID, {
       from: OWNER_ACCOUNT,
-      value: amountPHT
-    }));
-  });
-
-  it('Only the owner can create an allocation from the team supply', async () => {
-    const instance = await Distribution.deployed();
-    const amountPHT = web3.utils.toWei((AVAILABLE_TEAM_SUPPLY + 100).toString(), 'ether');
-
-    return assert.isRejected(instance.scheduleProjectVesting(FOUNDER_ACCOUNT, TEAM_SUPPLY_ID, {
-      from: OTHER_ACCOUNT,
       value: amountPHT
     }));
   });
@@ -86,21 +66,11 @@ contract('Team', (accounts) => {
     const teamMemberAllocation = teamMemberAllocationData[VI.balanceInitial];
     const projectSupplyDistributed = await instance.projectSupplyDistributed();
 
-    assert.equal(AVAILABLE_TEAM_SUPPLY, wei2pht(teamSupplyBefore));
     assert.equal(teamMemberAllocation.toString(), amountWei.toString());
     assert.equal(teamSupplyBefore.sub(teamMemberAllocation).toString(), teamSupplyAfter.toString());
     assert.equal(amountPHT, wei2pht(projectSupplyDistributed).toString());
   });
 
-  it('The owner can not create an allocation for an address that already has an allocation', async () => {
-    const instance = await Distribution.deployed();
-    const amountPHT = web3.utils.toWei((AVAILABLE_TEAM_SUPPLY + 100).toString(), 'ether');
-
-    return assert.isRejected(instance.scheduleProjectVesting(TEAM_MEMBER_ACCOUNT, TEAM_SUPPLY_ID, {
-      from: OWNER_ACCOUNT,
-      value: amountPHT
-    }));
-  });
 
   it('Should travel 3 months to test periods withdraws', async () => {
     assert.isFulfilled(timeTravel(30 * 3));
