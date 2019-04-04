@@ -99,21 +99,23 @@ contract Vesting is Ownable {
 
     VestingSchedule memory vestingSchedule = vestings[_beneficiary];
     require(vestingSchedule.balanceRemaining > 0 || vestingSchedule.bonusRemaining > 0);
+    uint256 releasable;
 
-    uint256 releasable = _calculateBalanceWithdrawal(vestingSchedule.startTimestamp,
-      vestingSchedule.endTimestamp,
-      vestingSchedule.lockPeriod,
-      vestingSchedule.balanceInitial,
-      vestingSchedule.balanceRemaining,
-      vestingSchedule.balanceClaimed);
+    if (now >= vestingSchedule.startTimestamp && vestingSchedule.balanceRemaining > 0) {
+      uint256 withdrawableAmount = _calculateBalanceWithdrawal(vestingSchedule.startTimestamp,
+        vestingSchedule.endTimestamp,
+        vestingSchedule.lockPeriod,
+        vestingSchedule.balanceInitial,
+        vestingSchedule.balanceRemaining,
+        vestingSchedule.balanceClaimed);
 
-    if (releasable > 0) {
-      vestings[_beneficiary].balanceClaimed = vestingSchedule.balanceClaimed.add(releasable);
-      vestings[_beneficiary].balanceRemaining = vestingSchedule.balanceRemaining.sub(releasable);
+      if (withdrawableAmount > 0) {
+        emit LogInt('withdrawableAmount', withdrawableAmount);
 
-      _beneficiary.transfer(releasable);
-
-      emit Withdrawn(_beneficiary, releasable);
+        vestings[_beneficiary].balanceClaimed = vestingSchedule.balanceClaimed.add(withdrawableAmount);
+        vestings[_beneficiary].balanceRemaining = vestingSchedule.balanceRemaining.sub(withdrawableAmount);
+        releasable = releasable.add(withdrawableAmount);
+      }
     }
 
     if (now > vestingSchedule.endTimestamp && vestingSchedule.bonusRemaining > 0) {
@@ -129,10 +131,13 @@ contract Vesting is Ownable {
 
         vestings[_beneficiary].bonusClaimed = vestingSchedule.bonusClaimed.add(withdrawableBonus);
         vestings[_beneficiary].bonusRemaining = vestingSchedule.bonusRemaining.sub(withdrawableBonus);
-
-        _beneficiary.transfer(withdrawableBonus);
-        emit Withdrawn(_beneficiary, withdrawableBonus);
+        releasable = releasable.add(withdrawableBonus);
       }
+    }
+
+    if (releasable > 0) {
+      _beneficiary.transfer(releasable);
+      emit Withdrawn(_beneficiary, releasable);
     }
   }
 
