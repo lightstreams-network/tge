@@ -78,6 +78,8 @@ module.exports = {
     // }
   },
 
+  plugins: ["truffle-security"],
+
   // Set default mocha options here, use special reporters etc.
   mocha: {
     // timeout: 100000

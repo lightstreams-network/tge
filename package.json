@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "Lightstreams tokens distribution smart contract",
   "scripts": {
-    "test-ganache": "truffle test --reset --network=ganache"
+    "compile": "truffle compile",
+    "test": "truffle test --reset --network=ganache",
+    "verify": "truffle run verify"
   },
   "author": "Lukas Lukac / Gabriel Garrido / Kyokan",
   "bugs": {
@@ -15,5 +17,8 @@
     "chai-as-promised": "^7.1.1",
     "ganache-cli": "^6.4.1",
     "truffle": "^5.0.9"
+  },
+  "devDependencies": {
+    "truffle-security": "^1.3.2"
   }
 }
