@@ -49,6 +49,14 @@ module.exports = {
      gasPrice: "500000000000",
     },
 
+    sirius: {
+      host: "127.0.0.1",     // Localhost (default: none)
+      port: 8545,            // Standard Ethereum port (default: none)
+      network_id: "162",       // Any network (default: none)
+      gasPrice: "500000000000",
+      from: "0xd119b8b038d3a67d34ca1d46e1898881626a082b"
+    },
+
     // Another network with more advanced options...
     // advanced: {
       // port: 8777,             // Custom port
