@@ -77,6 +77,7 @@ contract('Public Sale Contributor', (accounts) => {
 
     assert.equal(vestingOrigAf[VI.startTimestamp].toString(), '0');
     assert.equal(vestingOrigAf[VI.balanceInitial].toString(), '0');
+    assert.equal(vestingOrigAf[VI.balanceRemaining].toString(), '0');
 
     assert.notEqual(vestingNewAf[VI.startTimestamp].toString(), '0');
     assert.equal(vestingNewAf[VI.balanceInitial].toString(), pht2wei(PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT).toString());
