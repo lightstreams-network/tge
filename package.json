@@ -5,6 +5,7 @@
   "scripts": {
     "compile": "truffle compile",
     "test": "truffle test --reset --network=ganache",
+    "deploy-sirius": "truffle deploy --reset --network=sirius",
     "verify": "truffle run verify"
   },
   "author": "Lukas Lukac / Gabriel Garrido / Kyokan",
