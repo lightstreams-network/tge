@@ -28,7 +28,8 @@ const {
 
 contract('Public Sale Contributor', (accounts) => {
   const OWNER_ACCOUNT = accounts[0];
-  const PUBLIC_SALE_ACCOUNT = accounts[1];
+  const PUBLIC_SALE_ACCOUNT_LOST_PK = accounts[1];
+  const PUBLIC_SALE_ACCOUNT_NEW = accounts[2];
 
   const PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT = 100;
 
@@ -36,27 +37,68 @@ contract('Public Sale Contributor', (accounts) => {
     assert.isFulfilled(timeTravel(1));
   });
 
-  it('The owner can create distribute tokens to public sale contributors directly without vesting', async () => {
+  it('The owner can create distribute tokens to public sale contributors without vesting', async () => {
     const instance = await Distribution.deployed();
     const amountWei = pht2wei(PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT.toString());
 
     const saleSupplyBefore = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
     const saleSupplyDistributedBefore = await instance.saleSupplyDistributed();
     const balanceDistributionSCBf = toBN(await web3.eth.getBalance(instance.address));
-    const balanceBefore = toBN(await web3.eth.getBalance(PUBLIC_SALE_ACCOUNT));
+    const balanceBefore = toBN(await web3.eth.getBalance(PUBLIC_SALE_ACCOUNT_LOST_PK));
+    const vestingBf = await instance.vestings(PUBLIC_SALE_ACCOUNT_LOST_PK);
 
-    await instance.transferToPublicSale(PUBLIC_SALE_ACCOUNT,
-      { from: OWNER_ACCOUNT, value: amountWei });
+    await instance.schedulePublicSaleVesting(
+        PUBLIC_SALE_ACCOUNT_LOST_PK,
+        {from: OWNER_ACCOUNT, value: amountWei}
+    );
 
     const saleSupplyAfter = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
     const saleSupplyDistributedAfter = await instance.saleSupplyDistributed();
-    const balanceAfter = toBN(await web3.eth.getBalance(PUBLIC_SALE_ACCOUNT));
+    const balanceAfter = toBN(await web3.eth.getBalance(PUBLIC_SALE_ACCOUNT_LOST_PK));
     const balanceDistributionSCAf = toBN(await web3.eth.getBalance(instance.address));
+    const vestingAf = await instance.vestings(PUBLIC_SALE_ACCOUNT_LOST_PK);
 
+    assert.equal(vestingBf[VI.balanceInitial].toString(), 0);
+    assert.equal(vestingAf[VI.balanceInitial].toString(), amountWei.toString());
     assert.equal(balanceDistributionSCBf.toString(), 0);
-    assert.equal(balanceDistributionSCAf.toString(), 0);
+    assert.equal(balanceDistributionSCAf.toString(), amountWei.toString());
     assert.equal(saleSupplyAfter.toString(), saleSupplyBefore.sub(amountWei).toString());
     assert.equal(saleSupplyDistributedAfter.toString(), saleSupplyDistributedBefore.add(amountWei).toString());
-    assert.equal(balanceAfter.toString(), balanceBefore.add(amountWei).toString());
+    assert.equal(balanceAfter.toString(), balanceBefore.toString());
+  });
+
+  it('The owner can update the beneficiary address in case of a lost PK before any withdraw has been made', async () => {
+    const instance = await Distribution.deployed();
+
+    await instance.updateVestingBeneficiary(PUBLIC_SALE_ACCOUNT_LOST_PK, PUBLIC_SALE_ACCOUNT_NEW, { from: OWNER_ACCOUNT });
+
+    const vestingOrigAf = await instance.vestings(PUBLIC_SALE_ACCOUNT_LOST_PK);
+    const vestingNewAf = await instance.vestings(PUBLIC_SALE_ACCOUNT_NEW);
+
+    assert.equal(vestingOrigAf[VI.startTimestamp].toString(), '0');
+    assert.equal(vestingOrigAf[VI.balanceInitial].toString(), '0');
+
+    assert.notEqual(vestingNewAf[VI.startTimestamp].toString(), '0');
+    assert.equal(vestingNewAf[VI.balanceInitial].toString(), pht2wei(PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT).toString());
+  });
+
+  it('The public sale contributor can release their full assigned amount right away without any vesting', async () => {
+    const instance = await Distribution.deployed();
+    const expectedReleasable = PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT;
+    const vestingBefore = await instance.vestings(PUBLIC_SALE_ACCOUNT_NEW);
+    const contributorBalanceBefore = toBN(await web3.eth.getBalance(PUBLIC_SALE_ACCOUNT_NEW));
+
+    const tx = await instance.withdraw(PUBLIC_SALE_ACCOUNT_NEW, { from: PUBLIC_SALE_ACCOUNT_NEW });
+    const txCost = await calculateGasCost(tx.receipt.gasUsed);
+
+    const vestingAfter = await instance.vestings(PUBLIC_SALE_ACCOUNT_NEW);
+    const contributorBalanceAfter = toBN(await web3.eth.getBalance(PUBLIC_SALE_ACCOUNT_NEW));
+    const balanceDistributionSCAf = toBN(await web3.eth.getBalance(instance.address));
+
+    assert.equal(contributorBalanceAfter.toString(), contributorBalanceBefore.add(pht2wei(expectedReleasable).sub(txCost)).toString());
+    assert.equal(balanceDistributionSCAf.toString(), 0);
+    assert.equal(vestingAfter[VI.balanceInitial].toString(), vestingBefore[VI.balanceInitial].toString());
+    assert.equal(vestingAfter[VI.balanceRemaining].toString(), vestingBefore[VI.balanceRemaining].sub(pht2wei(expectedReleasable)).toString());
+    assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei(expectedReleasable).toString());
   });
 });
