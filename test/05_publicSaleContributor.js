@@ -135,6 +135,12 @@ contract('Public Sale Contributor', (accounts) => {
     assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei(expectedReleasable).toString());
   });
 
+  it('The public sale contributor with old PK should not be able to withdraw anything', async () => {
+    const instance = await Distribution.deployed();
+
+    assert.isRejected(instance.withdraw(PUBLIC_SALE_ACCOUNT_NEW, { from: PUBLIC_SALE_ACCOUNT_LOST_PK }));
+  });
+
   it('The public sale contributor can release their full assigned amount right away without any vesting', async () => {
     const instance = await Distribution.deployed();
     const expectedReleasable = SECOND_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT;
@@ -153,5 +159,11 @@ contract('Public Sale Contributor', (accounts) => {
     assert.equal(vestingAfter[VI.balanceInitial].toString(), vestingBefore[VI.balanceInitial].toString());
     assert.equal(vestingAfter[VI.balanceRemaining].toString(), vestingBefore[VI.balanceRemaining].sub(pht2wei(expectedReleasable)).toString());
     assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei(expectedReleasable).toString());
+  });
+
+  it('The public sale contributor who already withdrawn should not be able to do it twice', async () => {
+    const instance = await Distribution.deployed();
+
+    assert.isRejected(instance.withdraw(PUBLIC_SALE_ACCOUNT, { from: PUBLIC_SALE_ACCOUNT }));
   });
 });
