@@ -42,6 +42,7 @@ contract('Public Sale Contributor', (accounts) => {
 
     const saleSupplyBefore = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
     const saleSupplyDistributedBefore = await instance.saleSupplyDistributed();
+    const balanceDistributionSCBf = toBN(await web3.eth.getBalance(instance.address));
     const balanceBefore = toBN(await web3.eth.getBalance(PUBLIC_SALE_ACCOUNT));
 
     await instance.transferToPublicSale(PUBLIC_SALE_ACCOUNT,
@@ -50,7 +51,10 @@ contract('Public Sale Contributor', (accounts) => {
     const saleSupplyAfter = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
     const saleSupplyDistributedAfter = await instance.saleSupplyDistributed();
     const balanceAfter = toBN(await web3.eth.getBalance(PUBLIC_SALE_ACCOUNT));
+    const balanceDistributionSCAf = toBN(await web3.eth.getBalance(instance.address));
 
+    assert.equal(balanceDistributionSCBf.toString(), 0);
+    assert.equal(balanceDistributionSCAf.toString(), 0);
     assert.equal(saleSupplyAfter.toString(), saleSupplyBefore.sub(amountWei).toString());
     assert.equal(saleSupplyDistributedAfter.toString(), saleSupplyDistributedBefore.add(amountWei).toString());
     assert.equal(balanceAfter.toString(), balanceBefore.add(amountWei).toString());
