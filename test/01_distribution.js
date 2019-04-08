@@ -73,7 +73,7 @@ contract('Distribution', (accounts) => {
   it('The owner cannot create distribute tokens to public sale before allocation distribution starts', async () => {
     const instance = await Distribution.deployed();
     const amountWei = pht2wei('1');
-    return assert.isRejected(instance.transferToPublicSale(FOUNDER_ACCOUNT,
+    return assert.isRejected(instance.schedulePublicSaleVesting(FOUNDER_ACCOUNT,
       { from: OWNER_ACCOUNT, value: amountWei }));
   });
 
@@ -183,7 +183,7 @@ contract('Distribution', (accounts) => {
       value: amountWei
     });
 
-    await instance.transferToPublicSale(PUBLIC_SALE_ACCOUNT, {
+    await instance.schedulePublicSaleVesting(PUBLIC_SALE_ACCOUNT, {
       from: OWNER_ACCOUNT,
       value: bonusAmountWei
     });
@@ -193,7 +193,7 @@ contract('Distribution', (accounts) => {
       value: amountWeiOne
     }));
 
-    return assert.isRejected(instance.transferToPublicSale(PUBLIC_SALE_ACCOUNT, {
+    return assert.isRejected(instance.schedulePublicSaleVesting(PUBLIC_SALE_ACCOUNT, {
       from: OWNER_ACCOUNT,
       value: amountWeiOne
     }));

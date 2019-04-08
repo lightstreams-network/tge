@@ -102,17 +102,18 @@ contract Distribution is Ownable, Vesting {
   }
 
   /**
-   * @notice Allow the owner of the contract to send part of sale tokens directly to public sale contributors without vesting.
+   * @notice Allow the owner of the contract to send part of sale tokens to public sale contributors without vesting.
    *
    * @param _beneficiary The recipient of the allocation
    */
-  function transferToPublicSale(address payable _beneficiary) onlyOwner public payable {
+  function schedulePublicSaleVesting(address _beneficiary) onlyOwner public payable {
     uint _amount = msg.value;
 
     _validatePublicSaleTransfer(_beneficiary, _amount);
 
+    setVestingSchedule(_beneficiary, _amount, 0, now, now, 0 days, false);
+
     SALE_AVAILABLE_TOTAL_SUPPLY = SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amount);
-    _beneficiary.transfer(_amount);
   }
 
   function _validateScheduleProjectVesting(
