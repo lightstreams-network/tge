@@ -106,12 +106,12 @@ contract Distribution is Ownable, Vesting {
    *
    * @param _beneficiary The recipient of the allocation
    */
-  function schedulePublicSaleVesting(address payable _beneficiary) onlyOwner public payable {
+  function schedulePublicSaleVesting(address _beneficiary) onlyOwner public payable {
     uint _amount = msg.value;
 
     _validatePublicSaleTransfer(_beneficiary, _amount);
 
-    setVestingSchedule(_beneficiary, _amount, 0, now, now, 30 days, false);
+    setVestingSchedule(_beneficiary, _amount, 0, now, now, 0 days, false);
 
     SALE_AVAILABLE_TOTAL_SUPPLY = SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amount);
   }
