@@ -1,10 +1,3 @@
-/**
- * User: ggarrido
- * Date: 3/04/19 16:21
- * Copyright 2019 (c) Lightstreams, Granada
- */
-
-
 module.exports.supplies = {
   AVAILABLE_TOTAL_SUPPLY: 135000000,
   AVAILABLE_TEAM_SUPPLY: 60000000,

@@ -12,7 +12,6 @@ contract Distribution is Ownable, Vesting {
   uint256 private constant decimalFactor = 10 ** uint256(18);
   uint256 public MAX_TOKENS = 300000000 * decimalFactor;
 
-  // Todo: SHOULD THIS STILL BE SO SPECIFIC? TO BE DISCUSSED
   uint256 public PROJECT_INITIAL_SUPPLY = 135000000 * decimalFactor; // 45.00% of total amount
   uint256 public AVAILABLE_TEAM_SUPPLY = 60000000 * decimalFactor; // 20.00% released over 24 months
   uint256 public AVAILABLE_SEED_CONTRIBUTORS_SUPPLY = 24000000 * decimalFactor; // 8.00% released over 5 months
@@ -25,7 +24,7 @@ contract Distribution is Ownable, Vesting {
   uint256 public SALE_AVAILABLE_TOTAL_SUPPLY = SALE_INITIAL_SUPPLY;
 
   uint256 private constant BONUS_MIN = 0;
-  uint256 private constant BONUS_MAX = 40;
+  uint256 private constant BONUS_MAX = 35;
 
   uint256 public openingTime;
 
@@ -56,12 +55,12 @@ contract Distribution is Ownable, Vesting {
       _validateScheduleProjectVesting(_beneficiary, _amount, AVAILABLE_TEAM_SUPPLY);
 
       AVAILABLE_TEAM_SUPPLY = AVAILABLE_TEAM_SUPPLY.sub(_amount);
-      setVestingSchedule(_beneficiary, _amount, 0, now, now + 720 days, 30 days, true);
+      setVestingSchedule(_beneficiary, _amount, 0, now, now + 690 days, 30 days, true);
     } else if (_category == Category.SEED_CONTRIBUTORS) {
       _validateScheduleProjectVesting(_beneficiary, _amount, AVAILABLE_SEED_CONTRIBUTORS_SUPPLY);
 
       AVAILABLE_SEED_CONTRIBUTORS_SUPPLY = AVAILABLE_SEED_CONTRIBUTORS_SUPPLY.sub(_amount);
-      setVestingSchedule(_beneficiary, _amount, 0, now, now + 150 days, 30 days, false);
+      setVestingSchedule(_beneficiary, _amount, 0, now, now + 120 days, 30 days, false);
     }  else if (_category == Category.CONSULTANTS) {
       _validateScheduleProjectVesting(_beneficiary, _amount, AVAILABLE_CONSULTANTS_SUPPLY);
 
@@ -94,9 +93,9 @@ contract Distribution is Ownable, Vesting {
     uint _amountIncludingBonus = msg.value;
     uint _amount = _amountIncludingBonus.sub(_bonus);
 
-    _validatePrivateSaleVesting(_beneficiary, _amount, _bonus);
+    _validateSaleVesting(_beneficiary, _amount, _bonus);
 
-    setVestingSchedule(_beneficiary, _amount, _bonus, now, now + 150 days, 30 days, false);
+    setVestingSchedule(_beneficiary, _amount, _bonus, now, now + 120 days, 30 days, false);
 
     SALE_AVAILABLE_TOTAL_SUPPLY = SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amountIncludingBonus);
   }
@@ -105,15 +104,17 @@ contract Distribution is Ownable, Vesting {
    * @notice Allow the owner of the contract to send part of sale tokens to public sale contributors without vesting.
    *
    * @param _beneficiary The recipient of the allocation
+   * @param _bonus How many tokens out of the ones sent in "msg.value" should be scheduled for vesting as a bonus
    */
-  function schedulePublicSaleVesting(address _beneficiary) onlyOwner public payable {
-    uint _amount = msg.value;
+  function schedulePublicSaleVesting(address _beneficiary, uint256 _bonus) onlyOwner public payable {
+    uint _amountIncludingBonus = msg.value;
+    uint _amount = _amountIncludingBonus.sub(_bonus);
 
-    _validatePublicSaleTransfer(_beneficiary, _amount);
+    _validateSaleVesting(_beneficiary, _amount, _bonus);
 
-    setVestingSchedule(_beneficiary, _amount, 0, now, now, 0 days, false);
+    setVestingSchedule(_beneficiary, _amount, _bonus, now, now, 0 days, false);
 
-    SALE_AVAILABLE_TOTAL_SUPPLY = SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amount);
+    SALE_AVAILABLE_TOTAL_SUPPLY = SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amountIncludingBonus);
   }
 
   function _validateScheduleProjectVesting(
@@ -132,7 +133,7 @@ contract Distribution is Ownable, Vesting {
     require(PROJECT_AVAILABLE_TOTAL_SUPPLY.sub(_amount) >= 0, 'project max supply reached');
   }
 
-  function _validatePrivateSaleVesting(
+  function _validateSaleVesting(
     address _beneficiary,
     uint256 _amount,
     uint256 _bonus
@@ -158,18 +159,6 @@ contract Distribution is Ownable, Vesting {
     require(_bonus >= bonusMin && _bonus <= bonusMax);
   }
 
-  function _validatePublicSaleTransfer(
-    address _beneficiary,
-    uint256 _amount
-  )
-  internal view
-  {
-    require(openingTime <= now);
-
-    require(_amount > 0, 'no enough tokens sent to allocate to beneficiary');
-    require(_beneficiary != address(0));
-    require(SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amount) >= 0, 'sale max supply reached');
-  }
 
   function projectSupplyDistributed() public view returns (uint256) {
     return PROJECT_INITIAL_SUPPLY - PROJECT_AVAILABLE_TOTAL_SUPPLY;

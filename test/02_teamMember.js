@@ -1,10 +1,3 @@
-/**
- * User: ggarrido
- * Date: 3/04/19 16:21
- * Copyright 2019 (c) Lightstreams, Granada
- */
-
-
 const chai = require('chai');
 chai.use(require('chai-as-promised'));
 const assert = chai.assert;
@@ -71,9 +64,27 @@ contract('Team', (accounts) => {
     assert.equal(amountPHT, wei2pht(projectSupplyDistributed).toString());
   });
 
+  it('The team member can release first vested amount on very first day', async () => {
+    const instance = await Distribution.deployed();
+    const releasableAmount = '10';
+    const vestingBefore = await instance.vestings(TEAM_MEMBER_ACCOUNT);
+    const memberBalanceBefore = toBN(await web3.eth.getBalance(TEAM_MEMBER_ACCOUNT));
 
-  it('Should travel 3 months to test periods withdraws', async () => {
-    assert.isFulfilled(timeTravel(30 * 3));
+    const tx = await instance.withdraw(TEAM_MEMBER_ACCOUNT, { from: TEAM_MEMBER_ACCOUNT });
+    const txCost = await calculateGasCost(tx.receipt.gasUsed);
+
+    const vestingAfter = await instance.vestings(TEAM_MEMBER_ACCOUNT);
+    const memberBalanceAfter = toBN(await web3.eth.getBalance(TEAM_MEMBER_ACCOUNT));
+
+    assert.equal(memberBalanceAfter.toString(), memberBalanceBefore.add(pht2wei(releasableAmount).sub(txCost)).toString());
+    assert.equal(vestingAfter[VI.balanceInitial].toString(), vestingBefore[VI.balanceInitial].toString());
+    assert.equal(vestingAfter[VI.balanceRemaining].toString(), vestingBefore[VI.balanceRemaining].sub(pht2wei(releasableAmount)).toString());
+    assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei(releasableAmount).toString());
+  });
+
+
+  it('Should travel 2 months to test periods withdraws', async () => {
+    assert.isFulfilled(timeTravel(30 * 2));
   });
 
   it('Only beneficiary itself can release its vested amount', async () => {
@@ -81,8 +92,9 @@ contract('Team', (accounts) => {
     return assert.isRejected(instance.withdraw(TEAM_MEMBER_ACCOUNT, { from: OTHER_ACCOUNT }));
   });
 
-  it('The team member can release their vested amount', async () => {
+  it('The team member can release two more vested periods', async () => {
     const instance = await Distribution.deployed();
+    const releasableAmount = '20';
 
     const vestingBefore = await instance.vestings(TEAM_MEMBER_ACCOUNT);
     const memberBalanceBefore = toBN(await web3.eth.getBalance(TEAM_MEMBER_ACCOUNT));
@@ -93,11 +105,9 @@ contract('Team', (accounts) => {
     const vestingAfter = await instance.vestings(TEAM_MEMBER_ACCOUNT);
     const memberBalanceAfter = toBN(await web3.eth.getBalance(TEAM_MEMBER_ACCOUNT));
 
-    // Team member allocation was originally 240 if 3 months pass they
-    // should be allowed to have 30 PHT in their wallet after a release
-    assert.equal(memberBalanceAfter.toString(), memberBalanceBefore.add(pht2wei('30').sub(txCost)).toString());
+    assert.equal(memberBalanceAfter.toString(), memberBalanceBefore.add(pht2wei(releasableAmount).sub(txCost)).toString());
     assert.equal(vestingAfter[VI.balanceInitial].toString(), vestingBefore[VI.balanceInitial].toString());
-    assert.equal(vestingAfter[VI.balanceRemaining].toString(), vestingBefore[VI.balanceRemaining].sub(pht2wei('30')).toString());
+    assert.equal(vestingAfter[VI.balanceRemaining].toString(), vestingBefore[VI.balanceRemaining].sub(pht2wei(releasableAmount)).toString());
     assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei('30').toString());
   });
 
@@ -121,15 +131,12 @@ contract('Team', (accounts) => {
     let revokedAmountAfter = await instance.revokedAmount.call();
     let contractBalanceAfter = toBN(await web3.eth.getBalance(instance.address));
 
-    // Team member withdrawn already 30 out of 240 tokens. Revoking his vesting 1 month later
-    // means sending another 10 tokens to the team member and remaining 200 putting back to revokedAmount
     assert.equal(revokedAmountBefore, 0);
 
     assert.equal(revokedAmountAfter.toString(), pht2wei(expectedTeamMemberRevoked).toString());
     assert.equal(vestingAfter[VI.revoked], true);
     assert.equal(vestingAfter[VI.balanceRemaining], 0);
     assert.equal(vestingAfter[VI.bonusRemaining], 0);
-    // assert.equal(vestingAf[VI.balanceClaimed].toString(), teamMemberBalanceAf.toString());
 
     assert.equal(teamMemberBalanceAfter.toString(), teamMemberBalanceBefore.add(pht2wei(expectedTeamMemberReleasable)).toString());
     assert.equal(contractBalanceAfter.toString(), contractBalanceBefore.sub(pht2wei(expectedTeamMemberReleasable)).toString());
@@ -168,8 +175,8 @@ contract('Team', (accounts) => {
     assert.equal(teamMemberAllocation.toString(), amountWei.toString());
   });
 
-  it('Should travel 24 months to test next period withdraws', async () => {
-    assert.isFulfilled(timeTravel(30 * 24));
+  it('Should travel 23 months to test next period withdraws', async () => {
+    assert.isFulfilled(timeTravel(30 * 23));
   });
 
   it('The team member can release entire vested amount', async () => {

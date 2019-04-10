@@ -1,10 +1,3 @@
-/**
- * User: ggarrido
- * Date: 3/04/19 16:21
- * Copyright 2019 (c) Lightstreams, Granada
- */
-
-
 const chai = require('chai');
 chai.use(require('chai-as-promised'));
 const assert = chai.assert;

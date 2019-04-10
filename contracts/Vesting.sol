@@ -118,7 +118,7 @@ contract Vesting is Ownable {
       }
     }
 
-    if (now > vestingSchedule.endTimestamp && vestingSchedule.bonusRemaining > 0) {
+    if (now >= vestingSchedule.endTimestamp && vestingSchedule.bonusRemaining > 0) {
       uint256 withdrawableBonus = _calculateBonusWithdrawal(
         vestingSchedule.startTimestamp,
         vestingSchedule.endTimestamp,
@@ -218,29 +218,6 @@ contract Vesting is Ownable {
   }
 
   /**
-   * @dev Calculates the total amount vested since the start time. If after the endTime
-   * the entire balanceRemaining is returned
-   */
-  function _calculateTotalAmountVested(uint256 _startTimestamp, uint256 _endTimestamp, uint256 _balanceInitial) internal view returns (uint256 _amountVested) {
-    // If it's past the end time, the whole amount is available.
-    if (now >= _endTimestamp) {
-      return _balanceInitial;
-    }
-
-    // get the amount of time that passed since the start of vesting
-    uint256 durationSinceStart = SafeMath.sub(now, _startTimestamp);
-    // Get the amount of time amount of time the vesting will happen over
-    uint256 totalVestingTime = SafeMath.sub(_endTimestamp, _startTimestamp);
-    // Calculate the amount vested as a ratio
-    uint256 vestedAmount = SafeMath.div(
-      SafeMath.mul(durationSinceStart, _balanceInitial),
-      totalVestingTime
-    );
-
-    return vestedAmount;
-  }
-
-  /**
    * @dev Calculates the amount releasable. If the amount is less than the allowable amount
    * for each lock period zero will be returned. If more than the allowable amount each month will return
    * a multiple of the allowable amount each month
@@ -250,38 +227,25 @@ contract Vesting is Ownable {
    * @param _balanceInitial The starting number of tokens vested
    */
   function _calculateBalanceWithdrawal(uint256 _startTimestamp, uint256 _endTimestamp, uint256 _lockPeriod, uint256 _balanceInitial, uint256 _balanceRemaining, uint256 _balanceClaimed) internal view returns(uint256 _amountReleasable) {
-    uint256 totalAmountVested = _calculateTotalAmountVested(_startTimestamp, _endTimestamp, _balanceInitial);
+    uint256 totalAmountVested = _calculateTotalAmountVested(_startTimestamp, _endTimestamp, _lockPeriod, _balanceInitial);
     uint256 amountWithdrawable = totalAmountVested.sub(_balanceClaimed);
+
+    // If it's past the end time, the whole amount is available.
+    if (now >= _endTimestamp) {
+      return _balanceRemaining;
+    }
 
     if (_balanceRemaining <= amountWithdrawable) {
       return _balanceRemaining;
     }
 
-    // If it's past the end time, the whole amount is available.
-    if (now >= _endTimestamp) {
-      return amountWithdrawable;
-    }
-
-    // calculate the number of time periods vesting is done over
-    uint256 lockPeriods = (_endTimestamp.sub(_startTimestamp)).div(_lockPeriod);
-    uint256 amountWithdrawablePerLockPeriod = SafeMath.div(_balanceInitial, lockPeriods);
-
-    // get the remainder and subtract it from the amount amount withdrawable to get a multiple of the
-    // amount withdrawable per lock period
-    uint256 remainder = SafeMath.mod(amountWithdrawable, amountWithdrawablePerLockPeriod);
-    uint256 amountReleasable = amountWithdrawable.sub(remainder);
-
-    if (now < _endTimestamp && amountReleasable >= amountWithdrawablePerLockPeriod) {
-      return amountReleasable;
-    }
-
-    return 0;
+    return amountWithdrawable;
   }
 
   /**
    * @dev Calculates the amount of the bonus that is releasable. If the amount is less than the allowable amount
-   * for each lock period zero will be returned. It has been 30 days since the initial vesting has ended an amount
-   * equal to the original releases will be returned.  If over 60 days the entire bonus can be released
+   * for each lock period zero will be returned. It has been _lockPeriod days since the initial vesting has ended an amount
+   * equal to the original releases will be returned.  If over _lockPeriod*2 days the entire bonus can be released
    * @param _startTimestamp The start time of for when vesting started
    * @param _endTimestamp The end time of for when vesting will be complete and all tokens available
    * @param _lockPeriod time interval (ins seconds) in between vesting releases (example 30 days = 2592000 seconds)
@@ -290,20 +254,39 @@ contract Vesting is Ownable {
    */
 
   function _calculateBonusWithdrawal(uint256 _startTimestamp, uint _endTimestamp, uint256 _lockPeriod, uint256 _balanceInitial, uint256 _bonusRemaining) internal view returns(uint256 _amountWithdrawable) {
-    if (now >= _endTimestamp.add(30 days) && now < _endTimestamp.add(60 days)) {
+    if (now >= _endTimestamp.add(_lockPeriod).add(_lockPeriod)) {
+      return _bonusRemaining;
+    } else if (now >= _endTimestamp.add(_lockPeriod)) {
       // calculate the number of time periods vesting is done over
-      uint256 lockPeriods = (_endTimestamp.sub(_startTimestamp)).div(_lockPeriod);
+      uint256 lockPeriods = (_endTimestamp.sub(_startTimestamp)).div(_lockPeriod).add(1);
       uint256 amountWithdrawablePerLockPeriod = SafeMath.div(_balanceInitial, lockPeriods);
-      
+
       if (_bonusRemaining < amountWithdrawablePerLockPeriod) {
         return _bonusRemaining;
       }
-      
+
       return amountWithdrawablePerLockPeriod;
-    } else if (now >= _endTimestamp.add(60 days)){
-      return _bonusRemaining;
     }
 
     return 0;
+  }
+
+  /**
+   * @dev Calculates the total amount vested since the start time. If after the endTime
+   * the entire balanceRemaining is returned
+   */
+  function _calculateTotalAmountVested(uint256 _startTimestamp, uint256 _endTimestamp, uint256 _lockPeriod, uint256 _balanceInitial) internal view returns (uint256 _amountVested) {
+    // If it's past the end time, the whole amount is available.
+    if (now >= _endTimestamp) {
+      return _balanceInitial;
+    }
+
+    // calculate the number of time periods vesting is done over
+    uint256 lockPeriods = (_endTimestamp.sub(_startTimestamp)).div(_lockPeriod).add(1);
+    uint256 curPeriod = (now.sub(_startTimestamp)).div(_lockPeriod) + 1;
+    uint256 amountWithdrawablePerLockPeriod = SafeMath.div(_balanceInitial, lockPeriods);
+
+    uint256 vestedAmount = SafeMath.mul(amountWithdrawablePerLockPeriod, curPeriod);
+    return vestedAmount;
   }
 }

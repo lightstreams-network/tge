@@ -1,10 +1,3 @@
-/**
- * User: ggarrido
- * Date: 3/04/19 16:21
- * Copyright 2019 (c) Lightstreams, Granada
- */
-
-
 const chai = require('chai');
 chai.use(require('chai-as-promised'));
 const assert = chai.assert;
@@ -64,18 +57,9 @@ contract('Seed Contributor', (accounts) => {
     assert.equal(projectSupplyDistributedAfter.toString(), projectSupplyDistributedBefore.add(amountWei).toString());
   });
 
-  it('Should travel 3 months + 15 days to test periods withdraws', async () => {
-    assert.isFulfilled(timeTravel(30 * 3));
-  });
-
-  it('The owner cannot revoke a seed contributor vesting', async () => {
+  it('The seed contributor can release first vested amount', async () => {
     const instance = await Distribution.deployed();
-    return assert.isRejected(instance.revokeVestingSchedule(SEED_CONTRIBUTOR_ACCOUNT, { from: OWNER_ACCOUNT }));
-  });
-
-  it('The seed contributor can release their vested amount', async () => {
-    const instance = await Distribution.deployed();
-    const expectedReleasable = '300';
+    const expectedReleasable = '100';
 
     const vestingBefore = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
     const contributorBalanceBefore = toBN(await web3.eth.getBalance(SEED_CONTRIBUTOR_ACCOUNT));
@@ -86,12 +70,38 @@ contract('Seed Contributor', (accounts) => {
     const vestingAfter = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
     const contributorBalanceAfter = toBN(await web3.eth.getBalance(SEED_CONTRIBUTOR_ACCOUNT));
 
-    // seed contributor allocation was originally 500 PTH if 3 months pass they
-    // should be allowed to withdraw 300 PTH
     assert.equal(contributorBalanceAfter.toString(), contributorBalanceBefore.add(pht2wei(expectedReleasable).sub(txCost)).toString());
     assert.equal(vestingAfter[VI.balanceInitial].toString(), vestingBefore[VI.balanceInitial].toString());
     assert.equal(vestingAfter[VI.balanceRemaining].toString(), vestingBefore[VI.balanceRemaining].sub(pht2wei(expectedReleasable)).toString());
     assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei(expectedReleasable).toString());
+  });
+
+  it('Should travel 2 months to test periods withdraws', async () => {
+    assert.isFulfilled(timeTravel(30 * 2));
+  });
+
+  it('The owner cannot revoke a seed contributor vesting', async () => {
+    const instance = await Distribution.deployed();
+    return assert.isRejected(instance.revokeVestingSchedule(SEED_CONTRIBUTOR_ACCOUNT, { from: OWNER_ACCOUNT }));
+  });
+
+  it('The seed contributor can release two more period of vested amount', async () => {
+    const instance = await Distribution.deployed();
+    const expectedReleasable = '200';
+
+    const vestingBefore = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
+    const contributorBalanceBefore = toBN(await web3.eth.getBalance(SEED_CONTRIBUTOR_ACCOUNT));
+
+    const tx = await instance.withdraw(SEED_CONTRIBUTOR_ACCOUNT, { from: SEED_CONTRIBUTOR_ACCOUNT });
+    const txCost = await calculateGasCost(tx.receipt.gasUsed);
+
+    const vestingAfter = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
+    const contributorBalanceAfter = toBN(await web3.eth.getBalance(SEED_CONTRIBUTOR_ACCOUNT));
+
+    assert.equal(contributorBalanceAfter.toString(), contributorBalanceBefore.add(pht2wei(expectedReleasable).sub(txCost)).toString());
+    assert.equal(vestingAfter[VI.balanceInitial].toString(), vestingBefore[VI.balanceInitial].toString());
+    assert.equal(vestingAfter[VI.balanceRemaining].toString(), vestingBefore[VI.balanceRemaining].sub(pht2wei(expectedReleasable)).toString());
+    assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei('300').toString());
   });
 
   it('Should travel 30 days to test next period withdraws', async () => {
@@ -166,8 +176,6 @@ contract('Seed Contributor', (accounts) => {
     const vestingAfter = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT);
     const contributorBalanceAfter = toBN(await web3.eth.getBalance(SEED_CONTRIBUTOR_ACCOUNT));
 
-    // seed contributor allocation was originally 500 PTH if 3 months pass they
-    // should be allowed to withdraw 300 PTH
     assert.equal(contributorBalanceAfter.sub(contributorBalanceBefore).toString(), pht2wei(expectedReleasable).sub(txCost).toString());
     assert.equal(vestingAfter[VI.balanceRemaining].toString(), '0');
     assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei(SEED_CONTRIBUTOR_ALLOCATION_PHT).toString());
@@ -185,7 +193,7 @@ contract('Seed Contributor', (accounts) => {
 
   it('The new seed contributor account cannot released more tokens', async () => {
     const instance = await Distribution.deployed();
-    const expectedReleasable = '200';
+    const expectedReleasable = '300';
 
     const vestingBefore = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT_3);
     const contributorBalanceBefore = toBN(await web3.eth.getBalance(SEED_CONTRIBUTOR_ACCOUNT_3));
@@ -196,8 +204,6 @@ contract('Seed Contributor', (accounts) => {
     const vestingAfter = await instance.vestings(SEED_CONTRIBUTOR_ACCOUNT_3);
     const contributorBalanceAfter = toBN(await web3.eth.getBalance(SEED_CONTRIBUTOR_ACCOUNT_3));
 
-    // seed contributor allocation was originally 500 PTH if 3 months pass they
-    // should be allowed to withdraw 300 PTH
     assert.equal(contributorBalanceAfter.toString(), contributorBalanceBefore.add(pht2wei(expectedReleasable).sub(txCost)).toString());
     assert.equal(vestingAfter[VI.balanceInitial].toString(), vestingBefore[VI.balanceInitial].toString());
     assert.equal(vestingAfter[VI.balanceRemaining].toString(), vestingBefore[VI.balanceRemaining].sub(pht2wei(expectedReleasable)).toString());

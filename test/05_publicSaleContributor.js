@@ -1,10 +1,3 @@
-/**
- * User: ggarrido
- * Date: 3/04/19 16:21
- * Copyright 2019 (c) Lightstreams, Granada
- */
-
-
 const chai = require('chai');
 chai.use(require('chai-as-promised'));
 const assert = chai.assert;
@@ -34,6 +27,7 @@ contract('Public Sale Contributor', (accounts) => {
 
   const FIRST_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT = 100;
   const SECOND_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT = 100;
+  const SECOND_PUBLIC_SALE_CONTRIBUTOR_BONUS_ALLOCATION_PHT = 35;
 
   it('Should travel 1 day in the future so the vesting periods can be scheduled', async () => {
     assert.isFulfilled(timeTravel(1));
@@ -50,7 +44,7 @@ contract('Public Sale Contributor', (accounts) => {
     const vestingBf = await instance.vestings(PUBLIC_SALE_ACCOUNT_LOST_PK);
 
     await instance.schedulePublicSaleVesting(
-        PUBLIC_SALE_ACCOUNT_LOST_PK,
+        PUBLIC_SALE_ACCOUNT_LOST_PK, 0,
         {from: OWNER_ACCOUNT, value: amountWei}
     );
 
@@ -72,6 +66,8 @@ contract('Public Sale Contributor', (accounts) => {
   it('The owner can create distribute tokens to public sale contributor without vesting', async () => {
     const instance = await Distribution.deployed();
     const amountWei = pht2wei(SECOND_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT.toString());
+    const amountBonusWei = pht2wei(SECOND_PUBLIC_SALE_CONTRIBUTOR_BONUS_ALLOCATION_PHT.toString());
+    const totalAmountWei = pht2wei((SECOND_PUBLIC_SALE_CONTRIBUTOR_BONUS_ALLOCATION_PHT+SECOND_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT).toString());
 
     const saleSupplyBefore = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
     const saleSupplyDistributedBefore = await instance.saleSupplyDistributed();
@@ -80,8 +76,8 @@ contract('Public Sale Contributor', (accounts) => {
     const vestingBf = await instance.vestings(PUBLIC_SALE_ACCOUNT);
 
     await instance.schedulePublicSaleVesting(
-        PUBLIC_SALE_ACCOUNT,
-        {from: OWNER_ACCOUNT, value: amountWei}
+        PUBLIC_SALE_ACCOUNT, amountBonusWei,
+        {from: OWNER_ACCOUNT, value: totalAmountWei}
     );
 
     const saleSupplyAfter = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
@@ -92,10 +88,12 @@ contract('Public Sale Contributor', (accounts) => {
 
     assert.equal(vestingBf[VI.balanceInitial].toString(), 0);
     assert.equal(vestingAf[VI.balanceInitial].toString(), amountWei.toString());
+    assert.equal(vestingBf[VI.bonusInitial].toString(), 0);
+    assert.equal(vestingAf[VI.bonusInitial].toString(), amountBonusWei.toString());
     assert.equal(balanceDistributionSCBf.toString(), pht2wei(FIRST_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT).toString());
-    assert.equal(balanceDistributionSCAf.toString(), balanceDistributionSCBf.add(pht2wei(SECOND_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT)).toString());
-    assert.equal(saleSupplyAfter.toString(), saleSupplyBefore.sub(amountWei).toString());
-    assert.equal(saleSupplyDistributedAfter.toString(), saleSupplyDistributedBefore.add(amountWei).toString());
+    assert.equal(balanceDistributionSCAf.toString(), balanceDistributionSCBf.add(pht2wei(SECOND_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT + SECOND_PUBLIC_SALE_CONTRIBUTOR_BONUS_ALLOCATION_PHT)).toString());
+    assert.equal(saleSupplyAfter.toString(), saleSupplyBefore.sub(totalAmountWei).toString());
+    assert.equal(saleSupplyDistributedAfter.toString(), saleSupplyDistributedBefore.add(totalAmountWei).toString());
     assert.equal(balanceAfter.toString(), balanceBefore.toString());
   });
 
@@ -129,7 +127,7 @@ contract('Public Sale Contributor', (accounts) => {
     const balanceDistributionSCAf = toBN(await web3.eth.getBalance(instance.address));
 
     assert.equal(contributorBalanceAfter.toString(), contributorBalanceBefore.add(pht2wei(expectedReleasable).sub(txCost)).toString());
-    assert.equal(balanceDistributionSCAf.toString(), pht2wei(SECOND_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT).toString());
+    assert.equal(balanceDistributionSCAf.toString(), pht2wei(SECOND_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT + SECOND_PUBLIC_SALE_CONTRIBUTOR_BONUS_ALLOCATION_PHT).toString());
     assert.equal(vestingAfter[VI.balanceInitial].toString(), vestingBefore[VI.balanceInitial].toString());
     assert.equal(vestingAfter[VI.balanceRemaining].toString(), vestingBefore[VI.balanceRemaining].sub(pht2wei(expectedReleasable)).toString());
     assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei(expectedReleasable).toString());
@@ -143,7 +141,7 @@ contract('Public Sale Contributor', (accounts) => {
 
   it('The public sale contributor can release their full assigned amount right away without any vesting', async () => {
     const instance = await Distribution.deployed();
-    const expectedReleasable = SECOND_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT;
+    const expectedReleasable = SECOND_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT + SECOND_PUBLIC_SALE_CONTRIBUTOR_BONUS_ALLOCATION_PHT;
     const vestingBefore = await instance.vestings(PUBLIC_SALE_ACCOUNT);
     const contributorBalanceBefore = toBN(await web3.eth.getBalance(PUBLIC_SALE_ACCOUNT));
 
@@ -154,11 +152,13 @@ contract('Public Sale Contributor', (accounts) => {
     const contributorBalanceAfter = toBN(await web3.eth.getBalance(PUBLIC_SALE_ACCOUNT));
     const balanceDistributionSCAf = toBN(await web3.eth.getBalance(instance.address));
 
+    assert.equal(vestingAfter[VI.balanceRemaining].toString(), '0');
+    assert.equal(vestingAfter[VI.bonusRemaining].toString(), '0');
+    assert.equal(balanceDistributionSCAf.toString(), '0');
     assert.equal(contributorBalanceAfter.toString(), contributorBalanceBefore.add(pht2wei(expectedReleasable).sub(txCost)).toString());
-    assert.equal(balanceDistributionSCAf.toString(), 0);
     assert.equal(vestingAfter[VI.balanceInitial].toString(), vestingBefore[VI.balanceInitial].toString());
-    assert.equal(vestingAfter[VI.balanceRemaining].toString(), vestingBefore[VI.balanceRemaining].sub(pht2wei(expectedReleasable)).toString());
-    assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei(expectedReleasable).toString());
+    assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei(SECOND_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT).toString());
+    assert.equal(vestingAfter[VI.bonusClaimed].toString(), pht2wei(SECOND_PUBLIC_SALE_CONTRIBUTOR_BONUS_ALLOCATION_PHT).toString());
   });
 
   it('The public sale contributor who already withdrawn should not be able to do it twice', async () => {
