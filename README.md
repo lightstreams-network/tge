@@ -48,22 +48,28 @@ Output
 
    Replacing 'Distribution'
    ------------------------
-   > transaction hash:    0x8182a87e3505b68d607c88bb331f01a50574108eb53e00bdf128b379bb813c3f
+   > transaction hash:    0x5ff51102b7e32a3fa1f09769db020b337021324e71bdbf6e10218cb637d6f21d
    > Blocks: 0            Seconds: 0
-   > contract address:    0x0D53ad46A37A99b60240a08C5493aB5C83C2d70F
+   > contract address:    0x38B7a4E113A284C6894DB745498D5726C7087581
    > account:             0xD119b8B038d3A67d34ca1D46e1898881626a082b
-   > balance:             858.195597136
-   > gas used:            3079406
+   > balance:             853.365715136
+   > gas used:            2970349
    > gas price:           500 gwei
-   > value sent:          0 ETH
-   > total cost:          1.539703 ETH
+   > value sent:          0 PHT
+   > total cost:          1.4851745 PHT
 
 Distribution contract deployed!
 
    > Saving migration to chain.
    > Saving artifacts
    -------------------------------------
-   > Total cost:            1.539703 ETH
+   > Total cost:           1.4851745 PHT
+
+
+Summary
+=======
+> Total deployments:   2
+> Final cost:          1.6116285 PHT
 
 ```
 
