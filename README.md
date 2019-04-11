@@ -48,9 +48,9 @@ Output
 
    Replacing 'Distribution'
    ------------------------
-   > transaction hash:    0x5ff51102b7e32a3fa1f09769db020b337021324e71bdbf6e10218cb637d6f21d
+   > transaction hash:    0x9d08ad1196446fc41d5bbbac20bf2d9b15252cca742e4c507ea38ac42defdf8e
    > Blocks: 0            Seconds: 0
-   > contract address:    0x38B7a4E113A284C6894DB745498D5726C7087581
+   > contract address:    0xe2E4d49f002B8427eb50236D246599a80b58Febc
    > account:             0xD119b8B038d3A67d34ca1D46e1898881626a082b
    > balance:             853.365715136
    > gas used:            2970349
