@@ -176,6 +176,27 @@ contract('Private Sale Contributor', (accounts) => {
     assert.equal(vestingAfter[VI.bonusClaimed].toString(), pht2wei(expectedReleasable.toString()));
   });
 
+  it('The private sale contributor cannot more bonus till next month', async () => {
+    const instance = await Distribution.deployed();
+    const contributorBalanceBefore = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT_2));
+
+    const vestingBefore = await instance.vestings(PRIVATE_SALE_ACCOUNT_2);
+
+    const tx = await instance.withdraw(PRIVATE_SALE_ACCOUNT_2, { from: PRIVATE_SALE_ACCOUNT_2 });
+    const txCost = await calculateGasCost(tx.receipt.gasUsed);
+
+    const vestingAfter = await instance.vestings(PRIVATE_SALE_ACCOUNT_2);
+    const contributorBalanceAfter = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT_2));
+
+    assert.equal(contributorBalanceAfter.toString(), contributorBalanceBefore.sub(txCost).toString());
+    assert.equal(vestingAfter[VI.bonusClaimed].toString(), vestingBefore[VI.bonusClaimed].toString());
+    assert.equal(vestingAfter[VI.bonusRemaining].toString(), vestingBefore[VI.bonusRemaining].toString());
+  });
+
+  it('Should travel 1 months to test periods withdraws', async () => {
+    assert.isFulfilled(timeTravel(30));
+  });
+
   it('The private sale contributor can release remaining vested bonus', async () => {
     const instance = await Distribution.deployed();
     const expectedReleasable = (PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_BONUS_PHT - (PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT * 0.20)).toString();
@@ -192,11 +213,7 @@ contract('Private Sale Contributor', (accounts) => {
     assert.equal(vestingAfter[VI.bonusClaimed].toString(), pht2wei(PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_BONUS_PHT));
   });
 
-  it('Should travel 1 months to test periods withdraws', async () => {
-    assert.isFulfilled(timeTravel(30));
-  });
-
-  it('The private sale contributor cannot release more tokens', async () => {
+  it('The private sale contributor is not authorized to release more tokens', async () => {
     const instance = await Distribution.deployed();
     return assert.isRejected(instance.withdraw(PRIVATE_SALE_ACCOUNT_2, { from: PRIVATE_SALE_ACCOUNT_2 }));
   });

@@ -124,6 +124,7 @@ contract Vesting is Ownable {
         vestingSchedule.endTimestamp,
         vestingSchedule.lockPeriod,
         vestingSchedule.balanceInitial,
+        vestingSchedule.bonusClaimed,
         vestingSchedule.bonusRemaining);
   
       if (withdrawableBonus > 0) {
@@ -163,6 +164,7 @@ contract Vesting is Ownable {
       vestingSchedule.endTimestamp,
       vestingSchedule.lockPeriod,
       vestingSchedule.balanceInitial,
+      vestingSchedule.bonusClaimed,
       vestingSchedule.bonusRemaining);
 
     uint256 toProjectWalletFromBalanceInitial = vestingSchedule.balanceRemaining.sub(refundable);
@@ -250,22 +252,24 @@ contract Vesting is Ownable {
    * @param _endTimestamp The end time of for when vesting will be complete and all tokens available
    * @param _lockPeriod time interval (ins seconds) in between vesting releases (example 30 days = 2592000 seconds)
    * @param _balanceInitial The starting number of tokens vested
+   * @param _bonusClaimed The amount of bonus already claimed
    * @param _bonusRemaining The current balance of the vested bonus
    */
 
-  function _calculateBonusWithdrawal(uint256 _startTimestamp, uint _endTimestamp, uint256 _lockPeriod, uint256 _balanceInitial, uint256 _bonusRemaining) internal view returns(uint256 _amountWithdrawable) {
+  function _calculateBonusWithdrawal(uint256 _startTimestamp, uint _endTimestamp, uint256 _lockPeriod, uint256 _balanceInitial, uint256 _bonusClaimed, uint256 _bonusRemaining) internal view returns(uint256 _amountWithdrawable) {
     if (now >= _endTimestamp.add(_lockPeriod).add(_lockPeriod)) {
       return _bonusRemaining;
     } else if (now >= _endTimestamp.add(_lockPeriod)) {
       // calculate the number of time periods vesting is done over
       uint256 lockPeriods = (_endTimestamp.sub(_startTimestamp)).div(_lockPeriod).add(1);
       uint256 amountWithdrawablePerLockPeriod = SafeMath.div(_balanceInitial, lockPeriods);
+      uint256 amountWithdrawable = amountWithdrawablePerLockPeriod.sub(_bonusClaimed);
 
-      if (_bonusRemaining < amountWithdrawablePerLockPeriod) {
+      if (_bonusRemaining < amountWithdrawable) {
         return _bonusRemaining;
       }
 
-      return amountWithdrawablePerLockPeriod;
+      return amountWithdrawable;
     }
 
     return 0;
