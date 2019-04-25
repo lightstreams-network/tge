@@ -100,11 +100,32 @@ const csvCategoryToSolidityEnumValue = (csvCategory) => {
     }
 };
 
+const transfer1PhtToEveryDistributionAddress = async (data) => {
+    data.forEach(async function (distribution) {
+        console.log(`Transferring 1 PHT to ${distribution.to}...`);
+
+        await web3.eth.sendTransaction({
+            from: WALLET_PROJECT,
+            to: distribution.to,
+            value: pht2Wei('1'),
+            gas: 21000
+        });
+    });
+
+    console.log("All distribution accounts were topped-up!");
+};
+
 csv()
 .fromFile(CSV_FILEPATH)
 .then(async (data) => {
-    const txReceipts = Array();
+    const txReceipts = [];
     const contract = initContract();
+
+    try {
+        await transfer1PhtToEveryDistributionAddress(data);
+    } catch (e) {
+        process.exit(1);
+    }
 
     data.forEach(async function (distribution) {
         const gasLimit = '300000';
