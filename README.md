@@ -4,12 +4,16 @@
 
 # Lightstreams TGE Contract
 
+## Audit
+
+The TGE contract was audited and is now publicly available [here](./audit_report_20190424.pdf).
+
 ## Install
 ```bash
 npm i
 ```
 
-## Running tests
+## Run tests
 
 ### Ganache Manually
 Initialize Ganache GUI and configure it using same setting than `truffle.js`:
@@ -24,13 +28,12 @@ npm run test
 
 **Note:** Make sure to always reset the Ganache after each test run due to balances and time traveling.
 
-## Test script
+## Ganache Test script
 ```bash
 npm run test
 ```
-it uses Ganache
 
-## Deploy static version
+## Deploy
 
 ### Sirius
 
@@ -76,5 +79,3 @@ Summary
 > Final cost:          1.6116285 PHT
 
 ```
-
-##
