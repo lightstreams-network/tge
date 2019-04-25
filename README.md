@@ -1,4 +1,8 @@
-# Lightstreams TGE
+# Lightstreams TGE Script
+
+[Read more](./src/Readme.md)
+
+# Lightstreams TGE Contract
 
 ## Install
 ```bash

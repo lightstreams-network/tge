@@ -1,0 +1,17 @@
+{
+  "name": "lightstreams-tge-script",
+  "version": "1.0.0",
+  "description": "Lightstreams tokens distribution script",
+  "scripts": {},
+  "author": "Lukas Lukac",
+  "bugs": {
+    "url": "https://github.com/lightstreams-network/tge/issues"
+  },
+  "homepage": "https://github.com/lightstreams-network/tge#readme",
+  "dependencies": {
+    "csvtojson": "^2.0.8",
+    "dotenv": "^7.0.0",
+    "fs": "0.0.1-security",
+    "web3": "^1.0.0-beta.52"
+  }
+}
