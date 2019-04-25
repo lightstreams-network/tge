@@ -6,7 +6,7 @@
 
 ## Audit
 
-The TGE contract was audited and is now publicly available [here](./audit_report_20190424.pdf).
+The TGE contract was audited and is now publicly available [here](./audit_report_20190425.pdf).
 
 ## Install
 ```bash
