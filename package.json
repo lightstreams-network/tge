@@ -16,10 +16,10 @@
   "dependencies": {
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "ganache-cli": "^6.4.1",
-    "truffle": "^5.0.9"
+    "ganache-cli": "^6.4.3",
+    "truffle": "^5.0.15"
   },
   "devDependencies": {
-    "truffle-security": "^1.3.2"
+    "truffle-security": "^1.3.6"
   }
 }
