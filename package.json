@@ -8,7 +8,13 @@
     "deploy-sirius": "truffle deploy --reset --network=sirius",
     "verify": "truffle run verify"
   },
-  "author": "Lukas Lukac / Gabriel Garrido / Kyokan",
+  "author": "Lighstreams",
+  "contributors": [
+    "Lukas Lukac",
+    "Gabriel Garrido",
+    "Andrew Zappella",
+    "Kyokan"
+  ],
   "bugs": {
     "url": "https://github.com/lightstreams-network/tge/issues"
   },
