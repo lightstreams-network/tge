@@ -5,7 +5,9 @@ const fs = require('fs');
 
 env.config({ path: `${process.env.PWD}/.env` });
 
-const web3 = new web3lib(process.env.RPC_URL, null, {});
+const web3 = new web3lib(process.env.RPC_URL, null, {
+  defaultGasPrice: '500000000000'
+});
 const gasLimit = '300000';
 
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDR;
@@ -36,28 +38,21 @@ const parseContractAbi = (contractPath) => {
     return JSON.parse(fs.readFileSync(contractPath, 'utf8')).abi;
 };
 
-const pht2Wei = (pht) => {
-    return web3.utils.toBN(web3.utils.toWei(pht.toString(), 'ether'));
+const waitFor = (waitInSeconds) => {
+  return new Promise((resolve) => {
+    setTimeout(resolve, waitInSeconds * 1000);
+  });
 };
 
-const waitFor = (waitInSeconds) => {
-    return new Promise((resolve) => {
-        setTimeout(resolve, waitInSeconds * 1000);
-    });
+const pht2Wei = (pht) => {
+    return web3.utils.toBN(web3.utils.toWei(pht.toString(), 'ether'));
 };
 
 const initContract = () => {
     return web3.eth.Contract(
         parseContractAbi(CONTRACT_PATH),
-        CONTRACT_ADDRESS,
-        {
-            defaultGasPrice: '500000000000'
-        }
+        CONTRACT_ADDRESS
     )
-};
-
-const isProject = (csvCategory) => {
-    return !(isPrivateSale(csvCategory) || isPublicSale(csvCategory))
 };
 
 const isPrivateSale = (csvCategory) => {
@@ -70,14 +65,6 @@ const isPublicSale = (csvCategory) => {
 
 const calculateDepositValue = (purchasedBn, bonusBn) => {
     return purchasedBn.add(bonusBn);
-};
-
-const logDeposit = (wallet, to, value, category) => {
-    console.log("Depositing:");
-    console.log(`   from: ${wallet}`);
-    console.log(`   to: ${to}`);
-    console.log(`   value: ${value}`);
-    console.log(`   category: ${category}`);
 };
 
 const logReceipt = (receipt) => {
@@ -125,205 +112,157 @@ const csvCategoryToSolidityEnumValue = (csvCategory) => {
     }
 };
 
-const getMinedTxReceipt = (hash) => {
-  return new Promise((resolve, reject) => {
-    web3.eth.getTransactionReceipt(hash).then((receipt) => {
-      if (receipt === null) {
-        setTimeout(() => {
-          getMinedTxReceipt(hash).then((receipt) => {
-            resolve(receipt);
-          });
-        }, 500);
-      } else {
-        resolve(receipt);
-      }
-    });
+const getMinedTxReceipt = (hash, startedAt = Date.now()) => {
+  return new Promise(async (resolve, reject) => {
+    if (startedAt + (30*1000) > Date.now()) { // Max 1 minute wait
+      resolve(null);
+    }
+
+    let receipt = await web3.eth.getTransactionReceipt(hash);
+    if (receipt === null) {
+      console.log(`Waiting for txReceipt ${hash}`);
+      await waitFor(1);
+      receipt = await getMinedTxReceipt(hash, startedAt)
+    }
+
+    if (receipt === null) {
+      reject(`Tx ${hash} not found`);
+    } else {
+      resolve(receipt);
+    }
   });
 };
 
-const handleReceipt = (resolve, reject, err, hash) => {
+const handleReceipt = async (err, hash) => {
   if (err !== false) {
-    reject(err);
+    throw err;
   }
 
-  getMinedTxReceipt(hash)
-    .then((receipt) => {
-      logReceipt(receipt);
+  const receipt = await getMinedTxReceipt(hash);
+  logReceipt(receipt);
+  if (receipt.status === "0x1" || receipt.status === true) {
+    return receipt;
+  }
 
-      if (receipt.status !== true) {
-        return reject(new Error("TX failed! Duplicated distribution?"));
-      }
-
-      resolve(receipt);
-    })
-    .catch((e) => {
-      reject(e);
-    });
+  throw new Error("TX failed! Duplicated distribution?")
 };
 
 const transfer1PhtSeq = (distribution) => {
+  console.log(` Transferring 1 PHT to ${distribution.to}...`);
   return new Promise((resolve, reject) => {
-    console.log(` Transferring 1 PHT to ${distribution.to}...`);
-
-    try {
-      web3.eth.sendTransaction({
-        from: WALLET_PROJECT,
-        to: distribution.to,
-        value: pht2Wei('1'),
-        gas: 21000
-      }, function (err, hash) {
-        if (err !== false) {
-          reject(err);
-        }
-
-        getMinedTxReceipt(hash)
-          .then((receipt) => {
-            logReceipt(receipt);
-
-            if (receipt.status !== true) {
-              return reject(new Error("TX failed! Duplicated distribution?"));
-            }
-
-            resolve(distribution);
-          })
-          .catch((e) => {
-            reject(e);
-          });
-      });
-    } catch (e) {
-      reject(new Error(e.toString()));
-    }
-  });
+    web3.eth.sendTransaction({
+      from: WALLET_PROJECT,
+      to: distribution.to,
+      value: pht2Wei('1'),
+      gas: 21000
+    }, async (err, hash) => {
+      try {
+        const receipt = await handleReceipt(err, hash);
+        resolve(receipt)
+      } catch ( e ) {
+        reject(e);
+      }
+    });
+  })
 };
 
 const scheduleProjectVesting = (contract, to, value, category) => {
+  const solidityCategory = csvCategoryToSolidityEnumValue(category);
+  const fromWallet = WALLET_PROJECT;
+
+  logScheduleProject(fromWallet, to, value, category, solidityCategory);
+
   return new Promise((resolve, reject) => {
-    try {
-      const solidityCategory = csvCategoryToSolidityEnumValue(category);
-      const fromWallet = WALLET_PROJECT;
-
-      logScheduleProject(fromWallet, to, value, category, solidityCategory);
-
-      contract
-        .methods
-        .scheduleProjectVesting(to, solidityCategory)
-        .send(
-          {from: fromWallet, value: value, gas: gasLimit},
-          function (err, hash) {
-            handleReceipt(resolve, reject, err, hash);
-        });
-    } catch (e) {
-      console.log(e.toString());
-      reject(new Error(e.toString()));
-    }
+    contract
+      .methods
+      .scheduleProjectVesting(to, solidityCategory)
+      .send(
+        { from: fromWallet, value: value, gas: gasLimit },
+        async (err, hash) => {
+          try {
+            const receipt = await handleReceipt(err, hash);
+            resolve(receipt)
+          } catch(e) {
+            reject(e);
+          }
+        }
+      );
   });
 };
 
 const schedulePrivateSaleVesting = (contract, to, value, bonus, category) => {
+  const fromWallet = WALLET_SALE;
+
+  logScheduleSale(fromWallet, to, value, category);
+
   return new Promise((resolve, reject) => {
-    try {
-      const fromWallet = WALLET_SALE;
-
-      logScheduleSale(fromWallet, to, value, category);
-
-      contract
-        .methods
-        .schedulePrivateSaleVesting(to, bonus.toString())
-        .send(
-          {from: fromWallet, value: value, gas: gasLimit},
-          function (err, hash) {
-            handleReceipt(resolve, reject, err, hash);
+    contract
+      .methods
+      .schedulePrivateSaleVesting(to, bonus.toString())
+      .send(
+        { from: fromWallet, value: value, gas: gasLimit },
+        async (err, hash) => {
+          try {
+            const receipt = await handleReceipt(err, hash);
+            resolve(receipt);
+          } catch ( e ) {
+            reject(e);
+          }
         });
-    } catch (e) {
-      reject(new Error(e.toString()));
-    }
   });
 };
 
-const schedulePublicSaleVesting = (contract, to, value, bonus, category) => {
+const schedulePublicSaleVesting = async (contract, to, value, bonus, category) => {
+  const fromWallet = WALLET_SALE;
+
+  logScheduleSale(fromWallet, to, value, category);
+
   return new Promise((resolve, reject) => {
-    try {
-      const fromWallet = WALLET_SALE;
-
-      logScheduleSale(fromWallet, to, value, category);
-
-      contract
-        .methods
-        .schedulePublicSaleVesting(to, bonus.toString())
-        .send(
-          {from: fromWallet, value: value, gas: gasLimit},
-          function (err, hash) {
-            handleReceipt(resolve, reject, err, hash);
+    contract
+      .methods
+      .schedulePublicSaleVesting(to, bonus.toString())
+      .send(
+        { from: fromWallet, value: value, gas: gasLimit },
+        async (err, hash) => {
+          try {
+            const receipt = await handleReceipt(err, hash);
+            resolve(receipt);
+          } catch ( e ) {
+            reject(e);
+          }
         });
-    } catch (e) {
-      reject(new Error(e.toString()));
-    }
   });
 };
 
-const scheduleDistribution = (contract, distribution) => {
-  return new Promise((resolve, reject) => {
-    const to = distribution.to;
-    const purchased = pht2Wei(distribution.purchased_pht);
-    const bonus = pht2Wei(distribution.bonus_pht);
-    const category = distribution.category;
-    const value = calculateDepositValue(purchased, bonus);
+const scheduleDistribution = async (contract, distribution) => {
+  const to = distribution.to;
+  const purchased = pht2Wei(distribution.purchased_pht);
+  const bonus = pht2Wei(distribution.bonus_pht);
+  const category = distribution.category;
+  const value = calculateDepositValue(purchased, bonus);
 
-    if (isProject(category)) {
-      scheduleProjectVesting(contract, to, value, category)
-        .then(() => {
-          resolve();
-        })
-        .catch((e) => {
-          reject(e);
-        });
-    } else if (isPrivateSale(category)) {
-      schedulePrivateSaleVesting(contract, to, value, bonus, category)
-        .then(() => {
-          resolve();
-        })
-        .catch((e) => {
-          reject(e);
-        });
-    } else if (isPublicSale(category)) {
-      schedulePublicSaleVesting(contract, to, value, bonus, category)
-        .then(() => {
-          resolve();
-        })
-        .catch((e) => {
-          reject(e);
-        });
-    } else {
-      reject(new Error(`category ${category} not supported`));
-    }
-  });
+  if (isPrivateSale(category)) {
+    await schedulePrivateSaleVesting(contract, to, value, bonus, category)
+  } else if (isPublicSale(category)) {
+    await schedulePublicSaleVesting(contract, to, value, bonus, category)
+  } else {
+    await scheduleProjectVesting(contract, to, value, category)
+  }
 };
 
 csv()
-.fromFile(CSV_FILEPATH)
-.then(async (data) => {
+  .fromFile(CSV_FILEPATH)
+  .then(async (data) => {
     const contract = initContract();
-
-      for (let i = 0, p = Promise.resolve(); i < data.length; i++) {
-        p = p.then(_ => new Promise((resolve, reject) => {
-            console.log(`[Distribution #${i}]`);
-
-            transfer1PhtSeq(data[i])
-              .then((distribution) => {
-                scheduleDistribution(contract, distribution)
-                  .then(_ => {
-                    resolve();
-                  })
-                  .catch((e) => {
-                    console.log(e.toString());
-                    process.exit(1);
-                  });
-              })
-              .catch((e) => {
-                console.log(e.toString());
-                process.exit(1);
-              })
-          }
-        ));
+    for ( let i = 0; i < data.length; i++ ) {
+      console.log(`[Distribution #${i}]`);
+      try {
+        const distribution = data[i];
+        await transfer1PhtSeq(distribution);
+        await scheduleDistribution(contract, distribution);
+      } catch(err) {
+        console.error(err);
+        process.exit(1);
       }
-});
+    }
+  });
