@@ -114,14 +114,14 @@ const csvCategoryToSolidityEnumValue = (csvCategory) => {
 
 const getMinedTxReceipt = (hash, startedAt = Date.now()) => {
   return new Promise(async (resolve, reject) => {
-    if (startedAt + (30*1000) > Date.now()) { // Max 1 minute wait
+    if (startedAt + (30 * 1000) < Date.now()) { // Max 30 minute wait
       resolve(null);
     }
 
     let receipt = await web3.eth.getTransactionReceipt(hash);
     if (receipt === null) {
       console.log(`Waiting for txReceipt ${hash}`);
-      await waitFor(1);
+      await waitFor(0.5);
       receipt = await getMinedTxReceipt(hash, startedAt)
     }
 
@@ -139,11 +139,11 @@ const handleReceipt = async (err, hash) => {
   }
 
   const receipt = await getMinedTxReceipt(hash);
-  logReceipt(receipt);
   if (receipt.status === "0x1" || receipt.status === true) {
     return receipt;
   }
 
+  logReceipt(receipt);
   throw new Error("TX failed! Duplicated distribution?")
 };
 
