@@ -120,7 +120,7 @@ const getMinedTxReceipt = (hash, startedAt = Date.now()) => {
 
     let receipt = await web3.eth.getTransactionReceipt(hash);
     if (receipt === null) {
-      console.log(`Waiting for txReceipt ${hash}`);
+      console.log(` Waiting for txReceipt ${hash}`);
       await waitFor(0.5);
       receipt = await getMinedTxReceipt(hash, startedAt)
     }
