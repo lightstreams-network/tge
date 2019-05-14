@@ -147,7 +147,7 @@ const handleReceipt = async (err, hash) => {
   throw new Error("TX failed! Duplicated distribution?")
 };
 
-const transfer1PhtSeq = (distribution) => {
+const transfer1Pht = (distribution) => {
   console.log(` Transferring 1 PHT to ${distribution.to}...`);
   return new Promise((resolve, reject) => {
     web3.eth.sendTransaction({
@@ -258,7 +258,7 @@ csv()
       console.log(`[Distribution #${i}]`);
       try {
         const distribution = data[i];
-        await transfer1PhtSeq(distribution);
+        await transfer1Pht(distribution);
         await scheduleDistribution(contract, distribution);
       } catch(err) {
         console.error(err);
