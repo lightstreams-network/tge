@@ -57,6 +57,22 @@ module.exports = {
       from: "0xd119b8b038d3a67d34ca1d46e1898881626a082b"
     },
 
+    mainnet: {
+      host: "127.0.0.1",
+      port: 8545,
+      network_id: "163",
+      gasPrice: "500000000000",
+      from: "0xc69cf54ee896c8545722d34673370d0f0ffcb964"
+    },
+
+    standalone: {
+      host: "127.0.0.1",
+      port: 8545,
+      network_id: "161",
+      gasPrice: "500000000000",
+      from: "0xc916cfe5c83dd4fc3c3b0bf2ec2d4e401782875e"
+    },
+
     // Another network with more advanced options...
     // advanced: {
       // port: 8777,             // Custom port

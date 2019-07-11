@@ -6,6 +6,8 @@
     "compile": "truffle compile",
     "test": "truffle test --reset --network=ganache",
     "deploy-sirius": "truffle deploy --reset --network=sirius",
+    "deploy-mainnet": "truffle deploy --reset --network=mainnet",
+    "deploy-standalone": "truffle deploy --reset --network=standalone",
     "verify": "truffle run verify"
   },
   "author": "Lighstreams",
