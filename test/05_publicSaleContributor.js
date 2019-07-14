@@ -25,6 +25,7 @@ contract('Public Sale Contributor', (accounts) => {
   const PUBLIC_SALE_ACCOUNT_NEW = accounts[2];
   const PUBLIC_SALE_ACCOUNT = accounts[3];
   const PUBLIC_SALE_ACCOUNT_2 = accounts[4];
+  const PUBLIC_SALE_ACCOUNT_3 = accounts[5];
 
   const FIRST_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT = 100;
   const SECOND_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT = 100;
@@ -199,6 +200,45 @@ contract('Public Sale Contributor', (accounts) => {
     const saleSupplyDistributedAfter = await instance.saleSupplyDistributed();
     const balanceAfter = toBN(await web3.eth.getBalance(PUBLIC_SALE_ACCOUNT_2));
     const vestingAf = await instance.vestings(PUBLIC_SALE_ACCOUNT_2);
+
+    assert.equal(vestingBf[VI.balanceInitial].toString(), 0);
+    assert.equal(vestingAf[VI.balanceInitial].toString(), amountWei.add(amountWei_2).toString());
+    assert.equal(vestingBf[VI.bonusInitial].toString(), 0);
+    assert.equal(vestingAf[VI.bonusInitial].toString(), amountBonusWei.add(amountBonusWei_2).toString());
+    assert.equal(saleSupplyAfter.toString(), saleSupplyBefore.sub(totalAmountWei.add(totalAmountWei_2)).toString());
+    assert.equal(saleSupplyDistributedAfter.toString(), saleSupplyDistributedBefore.add(totalAmountWei).add(totalAmountWei_2).toString());
+    assert.equal(balanceAfter.toString(), balanceBefore.toString());
+  });
+
+  it('A public sale contributor can also be a private sale contributor', async () => {
+    const instance = await Distribution.deployed();
+    const amountWei = pht2wei(SECOND_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT.toString());
+    const amountBonusWei = pht2wei(SECOND_PUBLIC_SALE_CONTRIBUTOR_BONUS_ALLOCATION_PHT.toString());
+    const totalAmountWei = pht2wei((SECOND_PUBLIC_SALE_CONTRIBUTOR_BONUS_ALLOCATION_PHT+SECOND_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT).toString());
+
+    const amountWei_2 = pht2wei(SECOND_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT_2.toString());
+    const amountBonusWei_2 = pht2wei(SECOND_PUBLIC_SALE_CONTRIBUTOR_BONUS_ALLOCATION_PHT_2.toString());
+    const totalAmountWei_2 = pht2wei((SECOND_PUBLIC_SALE_CONTRIBUTOR_BONUS_ALLOCATION_PHT_2+SECOND_PUBLIC_SALE_CONTRIBUTOR_ALLOCATION_PHT_2).toString());
+
+    const saleSupplyBefore = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
+    const saleSupplyDistributedBefore = await instance.saleSupplyDistributed();
+    const balanceBefore = toBN(await web3.eth.getBalance(PUBLIC_SALE_ACCOUNT_3));
+    const vestingBf = await instance.vestings(PUBLIC_SALE_ACCOUNT_3);
+
+    await instance.schedulePublicSaleVesting(
+      PUBLIC_SALE_ACCOUNT_3, amountBonusWei,
+        {from: OWNER_ACCOUNT, value: totalAmountWei}
+    );
+    
+    await instance.schedulePrivateSaleVesting(
+      PUBLIC_SALE_ACCOUNT_3, amountBonusWei_2,
+        {from: OWNER_ACCOUNT, value: totalAmountWei_2}
+    );
+
+    const saleSupplyAfter = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
+    const saleSupplyDistributedAfter = await instance.saleSupplyDistributed();
+    const balanceAfter = toBN(await web3.eth.getBalance(PUBLIC_SALE_ACCOUNT_3));
+    const vestingAf = await instance.vestings(PUBLIC_SALE_ACCOUNT_3);
 
     assert.equal(vestingBf[VI.balanceInitial].toString(), 0);
     assert.equal(vestingAf[VI.balanceInitial].toString(), amountWei.add(amountWei_2).toString());
