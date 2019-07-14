@@ -80,11 +80,6 @@ contract('Seed Contributor', (accounts) => {
     assert.isFulfilled(timeTravel(30 * 2));
   });
 
-  it('The owner cannot revoke a seed contributor vesting', async () => {
-    const instance = await Distribution.deployed();
-    return assert.isRejected(instance.revokeVestingSchedule(SEED_CONTRIBUTOR_ACCOUNT, { from: OWNER_ACCOUNT }));
-  });
-
   it('The seed contributor can release two more period of vested amount', async () => {
     const instance = await Distribution.deployed();
     const expectedReleasable = '200';
@@ -106,11 +101,6 @@ contract('Seed Contributor', (accounts) => {
 
   it('Should travel 30 days to test next period withdraws', async () => {
     assert.isFulfilled(timeTravel(30));
-  });
-
-  it('The owner cannot revoke a seed contributor vesting', async () => {
-    const instance = await Distribution.deployed();
-    return assert.isRejected(instance.revokeVestingSchedule(SEED_CONTRIBUTOR_ACCOUNT, { from: OWNER_ACCOUNT }));
   });
 
   it('Only owner updated beneficiary of a seed contributor vesting', async () => {
