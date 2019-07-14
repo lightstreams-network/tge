@@ -81,9 +81,20 @@ contract Vesting is Ownable {
     uint256 _lockPeriod,
     bool _revocable
   ) internal {
-    require(vestings[_beneficiary].startTimestamp == 0);
 
-    vestings[_beneficiary] = VestingSchedule(_startTimestamp, _endTimestamp, _lockPeriod, _amount, 0, _amount, _bonus, 0, _bonus, _revocable, false);
+    uint256 balanceInitial = vestings[_beneficiary].balanceInitial;
+    uint256 balanceClaimed = vestings[_beneficiary].balanceClaimed;
+    uint256 balanceRemaining = vestings[_beneficiary].balanceRemaining;
+    uint256 bonusInitial = vestings[_beneficiary].bonusInitial;
+    uint256 bonusClaimed = vestings[_beneficiary].bonusClaimed;
+    uint256 bonusRemaining = vestings[_beneficiary].bonusRemaining;
+
+    balanceInitial = balanceInitial.add(_amount);
+    balanceRemaining = balanceRemaining.add(_amount);
+    bonusInitial = bonusInitial.add(_bonus);
+    bonusRemaining = bonusRemaining.add(_bonus);
+
+    vestings[_beneficiary] = VestingSchedule(_startTimestamp, _endTimestamp, _lockPeriod, balanceInitial, balanceClaimed, balanceRemaining, bonusInitial, bonusClaimed, bonusRemaining, _revocable, false);
 
     emit NewVesting(_beneficiary, _amount, _bonus);
   }

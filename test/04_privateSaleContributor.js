@@ -21,9 +21,12 @@ contract('Private Sale Contributor', (accounts) => {
   const OWNER_ACCOUNT = accounts[0];
   const PRIVATE_SALE_ACCOUNT = accounts[1];
   const PRIVATE_SALE_ACCOUNT_2 = accounts[2];
+  const PRIVATE_SALE_ACCOUNT_3 = accounts[3];
 
   const PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT = 500;
+  const PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT_2 = 100;
   const PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_BONUS_PHT = 150;
+  const PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_BONUS_PHT_2 = 5;
 
   it('Should travel 1 day in the future so the vesting periods can be scheduled', async () => {
     assert.isFulfilled(timeTravel(1));
@@ -89,6 +92,34 @@ contract('Private Sale Contributor', (accounts) => {
     assert.equal(vesting[VI.bonusInitial].toString(), bonusAmountWei.toString());
     assert.equal(saleSupplyAfter.toString(), saleSupplyBefore.sub(vesting[VI.balanceInitial]).sub(vesting[VI.bonusInitial]).toString());
     assert.equal(saleSupplyDistributedAfter.toString(), saleSupplyDistributedBefore.add(totalAmountWei).toString());
+  });
+
+  it('The owner can create multiple allocations for a private contributor from sale supply with vesting and with bonus', async () => {
+    const instance = await Distribution.deployed();
+    const amountWei = pht2wei(PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT.toString());
+    const amountWei_2 = pht2wei(PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT_2.toString());
+    const bonusAmountWei = pht2wei(PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_BONUS_PHT.toString());
+    const bonusAmountWei_2 = pht2wei(PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_BONUS_PHT_2.toString());
+    const totalAmountWei = pht2wei((PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_BONUS_PHT+PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT).toString());
+    const totalAmountWei_2 = pht2wei((PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_BONUS_PHT_2+PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT_2).toString());
+
+    const saleSupplyBefore = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
+    const saleSupplyDistributedBefore = await instance.saleSupplyDistributed();
+
+    await instance.schedulePrivateSaleVesting(PRIVATE_SALE_ACCOUNT_3, bonusAmountWei,
+      { from: OWNER_ACCOUNT, value: totalAmountWei });
+
+    await instance.schedulePrivateSaleVesting(PRIVATE_SALE_ACCOUNT_3, bonusAmountWei_2,
+      { from: OWNER_ACCOUNT, value: totalAmountWei_2 });
+
+    const vesting = await instance.vestings(PRIVATE_SALE_ACCOUNT_3);
+    const saleSupplyAfter = await instance.SALE_AVAILABLE_TOTAL_SUPPLY.call();
+    const saleSupplyDistributedAfter = await instance.saleSupplyDistributed();
+
+    assert.equal(vesting[VI.balanceInitial].toString(), amountWei.add(amountWei_2).toString());
+    assert.equal(vesting[VI.bonusInitial].toString(), bonusAmountWei.add(bonusAmountWei_2).toString());
+    assert.equal(saleSupplyAfter.toString(), saleSupplyBefore.sub(vesting[VI.balanceInitial]).sub(vesting[VI.bonusInitial]).toString());
+    assert.equal(saleSupplyDistributedAfter.toString(), saleSupplyDistributedBefore.add(totalAmountWei).add(totalAmountWei_2).toString());
   });
 
   it('The private sale contributor can release first vested amount', async () => {
