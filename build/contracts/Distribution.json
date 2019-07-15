@@ -15711,11 +15711,17 @@
       },
       "links": {},
       "address": "0x066Fa1bC2cf492016557c962f5c51C3a1C8F79C5",
-      "transactionHash": "0x0c1781d4d9d10105b8f1d1d92b0fa60662372614cf14f768ea34da343754fed3"
+      "transactionHash": "0xc8c5aa7c66fe54961ed1c1ee8d89305c66a2ad71b67ae307eca0a5ca06d0332a"
+    },
+    "162": {
+      "events": {},
+      "links": {},
+      "address": "0x30971575632e7bEeA400cE8555703b4c2a6Aff91",
+      "transactionHash": "0xfc4f89c88ce020d7ee3fb3d4540131b77d6949b58f40784c0c1ab7075176d721"
     }
   },
   "schemaVersion": "3.0.6",
-  "updatedAt": "2019-07-15T15:25:20.926Z",
+  "updatedAt": "2019-07-15T19:19:38.281Z",
   "devdoc": {
     "methods": {
       "constructor": {

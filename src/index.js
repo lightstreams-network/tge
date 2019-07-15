@@ -4,7 +4,7 @@ dotenv.config({ path: `${process.env.PWD}/.env` });
 const Web3 = require('web3');
 const Csv = require('./lib/csv');
 const Logger = require('./lib/logger');
-const { Contract } = require('./lib/contract');
+const { Contract, isPrivateSale, isPublicSale, categoryHasScheduledVesting } = require('./lib/contract');
 
 const pht2Wei = (web3, pht) => {
   return web3.utils.toBN(web3.utils.toWei(pht.toString(), 'ether'));
@@ -43,9 +43,9 @@ const transferTo = (web3, logger, { from, to, amountInWei }) => {
 
 const scheduleDistribution = async (contract, { to, purchased, bonus, category }) => {
   const depositedValue = purchased.add(bonus);
-  if (contract.isPrivateSale(category)) {
+  if (isPrivateSale(category)) {
     await contract.schedulePrivateSaleVesting(to, depositedValue, bonus, category)
-  } else if (contract.isPublicSale(category)) {
+  } else if (isPublicSale(category)) {
     await contract.schedulePublicSaleVesting(to, depositedValue, bonus, category)
   } else {
     await contract.scheduleProjectVesting(to, depositedValue, category)
@@ -82,19 +82,21 @@ const startDistribution = async (config, logger) => {
     }
 
     const existingVestingData = await contract.vestingExists(distributionItem.to);
-    if(existingVestingData && existingVestingData.startTimestamp.toString() !== "0") {
-      logger.logVesting(existingVestingData);
-      logger.error(`\tAddress ${distributionItem.to} already got an active vesting`);
-      continue;
-    }
+    if (categoryHasScheduledVesting(distributionItem.category)) {
+      if (existingVestingData.startTimestamp.toString() !== "0") {
+        logger.logVesting(existingVestingData);
+        logger.error(`\tAddress ${distributionItem.to} already got an active vesting`);
+        continue;
+      }
 
-    logger.info("\t-----------");
-    logger.info(`\tTransferring 1 PHT to ${distributionItem.to}...`);
-    await transferTo(web3, logger, {
-      from: config.projectWallet,
-      to: distributionItem.to,
-      amountInWei: pht2Wei(web3, '1')
-    });
+      logger.info("\t-----------");
+      logger.info(`\tTransferring 1 PHT to ${distributionItem.to}...`);
+      await transferTo(web3, logger, {
+        from: config.projectWallet,
+        to: distributionItem.to,
+        amountInWei: pht2Wei(web3, '1')
+      });
+    }
 
     try {
       await scheduleDistribution(contract, {
@@ -104,8 +106,10 @@ const startDistribution = async (config, logger) => {
         category: distributionItem.category
       });
 
-      const vestingData = await contract.vestingExists(distributionItem.to);
-      logger.logVesting(vestingData);
+      if (categoryHasScheduledVesting(distributionItem.category)) {
+        const vestingData = await contract.vestingExists(distributionItem.to);
+        logger.logVesting(vestingData);
+      }
 
       totalDistributedPurchasedPht += parseInt(distributionItem.purchased_pht);
       totalDistributedBonus += parseInt(distributionItem.bonus_pht);

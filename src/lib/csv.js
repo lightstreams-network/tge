@@ -6,12 +6,16 @@
 
 const Csv = require('csvtojson');
 
-const { CATEGORY_CSV_SALE_PUBLIC, CATEGORY_CSV_SALE_PRIVATE } = require('./contract');
+const {
+  categoryHasScheduledVesting,
+  isPublicSale,
+  isPrivateSale,
+} = require('./contract');
 
 // Public and private sale people pull for the sales pool. In the remaining cases it pools from the
 // project pool.
 const isPrivateOrPublicSale = (category) => {
-  return (category === CATEGORY_CSV_SALE_PUBLIC) || (category === CATEGORY_CSV_SALE_PRIVATE);
+  return isPublicSale(category) || isPrivateSale(category);
 };
 
 // Source pool MUST be the same in order to allow aggregation.
@@ -29,9 +33,12 @@ module.exports = async (csvPath, logger) => {
       logger.info(`---------`);
       logger.info(`Staring distribution aggregation...`);
       const data = {};
+      const notVestingData = Array();
       for ( let i = 0; i < csvData.length; i++ ) {
         const distributionItem = csvData[i];
-        if (typeof data[distributionItem.to] === 'undefined') {
+        if (!categoryHasScheduledVesting(distributionItem.category)){
+          notVestingData.push(distributionItem);
+        } else if (typeof data[distributionItem.to] === 'undefined') {
           data[distributionItem.to] = distributionItem;
         } else if(validateAggregation(data[distributionItem.to].category, distributionItem.category)) {
           logger.info(`Aggregated ${distributionItem.to}: ${data[distributionItem.to].category}, ${distributionItem.category}`);
@@ -42,7 +49,7 @@ module.exports = async (csvPath, logger) => {
         }
       }
 
-      return Object.values(data);
+      return Object.values(data).concat(notVestingData);
     }
   }
 };

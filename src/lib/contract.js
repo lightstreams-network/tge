@@ -71,8 +71,18 @@ const handleTxReceipt = (tx, logger, resolve, reject) => {
   })
 };
 
-module.exports.CATEGORY_CSV_SALE_PRIVATE = CATEGORY_CSV_SALE_PRIVATE;
-module.exports.CATEGORY_CSV_SALE_PUBLIC = CATEGORY_CSV_SALE_PUBLIC;
+module.exports.categoryHasScheduledVesting = (categoryOne) => {
+  return [CATEGORY_CSV_PROJECT_TEAM, CATEGORY_CSV_PROJECT_SEED_CONTRIBUTORS, CATEGORY_CSV_SALE_PRIVATE, CATEGORY_CSV_SALE_PUBLIC].indexOf(categoryOne) !== -1;
+};
+
+module.exports.isPrivateSale = (csvCategory) => {
+  return csvCategory === CATEGORY_CSV_SALE_PRIVATE;
+};
+
+module.exports.isPublicSale = (csvCategory) => {
+  return csvCategory === CATEGORY_CSV_SALE_PUBLIC;
+};
+
 module.exports.Contract = async (web3, logger, { projectWallet, salesWallet }, { contractAddress, contractPath }) => {
   const gasLimit = '3000000';
   const contractInstance = web3.eth.Contract(
@@ -90,12 +100,6 @@ module.exports.Contract = async (web3, logger, { projectWallet, salesWallet }, {
   logger.info(`\t Owner: ${owner}`);
 
   return {
-    isPrivateSale: (csvCategory) => {
-      return csvCategory === CATEGORY_CSV_SALE_PRIVATE;
-    },
-    isPublicSale: (csvCategory) => {
-      return csvCategory === CATEGORY_CSV_SALE_PUBLIC;
-    },
     vestingExists: (address) => {
       return new Promise((resolve, reject) => {
         contractInstance.methods.vestings(address).call({}, (err, result) => {
