@@ -60,7 +60,7 @@ contract Distribution is Ownable, Vesting {
       _validateScheduleProjectVesting(_beneficiary, _amount, AVAILABLE_SEED_CONTRIBUTORS_SUPPLY);
 
       AVAILABLE_SEED_CONTRIBUTORS_SUPPLY = AVAILABLE_SEED_CONTRIBUTORS_SUPPLY.sub(_amount);
-      setVestingSchedule(_beneficiary, _amount, 0, now, now + 120 days, 30 days, false);
+      setVestingSchedule(_beneficiary, _amount, 0, now, now, 0 days, false);
     }  else if (_category == Category.CONSULTANTS) {
       _validateScheduleProjectVesting(_beneficiary, _amount, AVAILABLE_CONSULTANTS_SUPPLY);
 
@@ -95,7 +95,7 @@ contract Distribution is Ownable, Vesting {
 
     _validateSaleVesting(_beneficiary, _amount, _bonus);
 
-    setVestingSchedule(_beneficiary, _amount, _bonus, now, now + 120 days, 30 days, false);
+    setVestingSchedule(_beneficiary, _amount, _bonus, now, now, 0 days, false);
 
     SALE_AVAILABLE_TOTAL_SUPPLY = SALE_AVAILABLE_TOTAL_SUPPLY.sub(_amountIncludingBonus);
   }
