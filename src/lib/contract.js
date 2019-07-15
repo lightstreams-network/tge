@@ -71,7 +71,9 @@ const handleTxReceipt = (tx, logger, resolve, reject) => {
   })
 };
 
-module.exports = async (web3, logger, { projectWallet, salesWallet }, { contractAddress, contractPath }) => {
+module.exports.CATEGORY_CSV_SALE_PRIVATE = CATEGORY_CSV_SALE_PRIVATE;
+module.exports.CATEGORY_CSV_SALE_PUBLIC = CATEGORY_CSV_SALE_PUBLIC;
+module.exports.Contract = async (web3, logger, { projectWallet, salesWallet }, { contractAddress, contractPath }) => {
   const gasLimit = '3000000';
   const contractInstance = web3.eth.Contract(
     parseContractAbi(contractPath),

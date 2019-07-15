@@ -2,10 +2,9 @@ const dotenv = require('dotenv');
 dotenv.config({ path: `${process.env.PWD}/.env` });
 
 const Web3 = require('web3');
-const Csv = require('csvtojson');
-
+const Csv = require('./lib/csv');
 const Logger = require('./lib/logger');
-const Contract = require('./lib/contract');
+const { Contract } = require('./lib/contract');
 
 const pht2Wei = (web3, pht) => {
   return web3.utils.toBN(web3.utils.toWei(pht.toString(), 'ether'));
@@ -53,15 +52,18 @@ const scheduleDistribution = async (contract, { to, purchased, bonus, category }
   }
 };
 
-const main = async (config, logger) => {
+const startDistribution = async (config, logger) => {
   let totalDistributedPurchasedPht = 0;
   let totalDistributedBonus = 0;
 
   const web3 = new Web3(config.rpcUrl, null, {
-    defaultGasPrice: '500000000000'
+    defaultGasPrice: '500000000000',
+    transactionConfirmationBlocks: 1,
+    transactionBlockTimeout: 5,
+    defaultBlock: "latest",
   });
 
-  const data = await Csv().fromFile(config.csvPath);
+  const csv = await Csv(config.csvPath, logger);
   const contract = await Contract(web3, logger, {
     projectWallet: config.projectWallet,
     salesWallet: config.saleWallet,
@@ -70,6 +72,7 @@ const main = async (config, logger) => {
     contractPath: config.contractPath
   });
 
+  const data = csv.getAggregatedData();
   for ( let i = 0; i < data.length; i++ ) {
     const distributionItem = data[i];
     logger.logDistribution(i, distributionItem);
@@ -128,10 +131,9 @@ const config = {
 
 const logger = Logger();
 
-main(config, logger)
+startDistribution(config, logger)
   .then(({ totalPurchased, totalBonus }) => {
     logger.logFinalOutput(totalPurchased, totalBonus);
-    logger.info(`Logged in: ${logger.filepath()}`);
     logger.info(`Distribution completed`);
   })
   .catch(err => {
@@ -139,6 +141,7 @@ main(config, logger)
     logger.error(err.message());
   })
   .finally(() => {
+    logger.info(`Logged in ${logger.filepath()} at ${(new Date().toISOString())}`);
     process.exit(1);
     logger.close();
   });

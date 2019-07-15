@@ -13,6 +13,7 @@ module.exports = () => {
 
   const logInfo = (msg) => {
     if(!msg) return;
+
     console.log(msg);
     if (typeof msg === 'string') {
       fs.writeSync(fd, `${msg}\n`);
@@ -23,16 +24,18 @@ module.exports = () => {
 
   const logError = (msg) => {
     if (!msg) return;
+
     console.error('[ERROR] ', msg);
     if (typeof msg === 'string') {
       fs.writeSync(fd, `[ERROR] ${msg}\n`);
     } else {
-      fs.writeSync(fd, `[ERROR] ${msg.message}\n`);
+      fs.writeSync(fd, `[ERROR] ${e.stack}\n`);
     }
   };
 
   const logWarning = (msg) => {
     if (!msg) return;
+
     console.error('[WARNING] ', msg);
     if (typeof msg === 'string') {
       fs.writeSync(fd, `[WARNING] ${msg}\n`);
@@ -80,10 +83,11 @@ module.exports = () => {
     },
     logDistribution: (idx, distribution) => {
       logInfo(`\n[Distribution #${idx}]`);
-      logInfo(`\tto: ${distribution.to}`);
-      logInfo(`\tpurchased: ${distribution.purchased_pht}`);
-      logInfo(`\tbonus: ${distribution.bonus_pht}`);
-      logInfo(`\tcategory: ${distribution.category}`);
+      logInfo(`to: ${distribution.to}`);
+      logInfo(`purchased: ${distribution.purchased_pht}`);
+      logInfo(`bonus: ${distribution.bonus_pht}`);
+      logInfo(`category: ${distribution.category}`);
+      logInfo(`\n`);
     },
     logVesting: (vestingData) => {
       logInfo("\t-----------");
