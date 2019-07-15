@@ -21,6 +21,8 @@ contract('Private Sale Contributor', (accounts) => {
   const OWNER_ACCOUNT = accounts[0];
   const PRIVATE_SALE_ACCOUNT = accounts[1];
   const PRIVATE_SALE_ACCOUNT_2 = accounts[2];
+  const PRIVATE_SALE_ACCOUNT_3 = accounts[3];
+  const OTHER_ACCOUNT = accounts[4];
 
   const PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT = 500;
   const PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_BONUS_PHT = 150;
@@ -69,7 +71,7 @@ contract('Private Sale Contributor', (accounts) => {
     assert.equal(saleSupplyDistributedAfter.toString(), saleSupplyDistributedBefore.add(amountWei).toString());
   });
 
-  it('The owner can create an allocation for private contributors from sale supply with vesting an with bonus', async () => {
+  it('The owner can create another allocation for private contributors from sale supply with vesting an with bonus', async () => {
     const instance = await Distribution.deployed();
     const amountWei = pht2wei(PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT.toString());
     const bonusAmountWei = pht2wei(PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_BONUS_PHT.toString());
@@ -91,37 +93,19 @@ contract('Private Sale Contributor', (accounts) => {
     assert.equal(saleSupplyDistributedAfter.toString(), saleSupplyDistributedBefore.add(totalAmountWei).toString());
   });
 
-  it('The private sale contributor can release first vested amount', async () => {
-    const instance = await Distribution.deployed();
-    const expectedReleasable = '100';
-    const vestingBefore = await instance.vestings(PRIVATE_SALE_ACCOUNT);
-    const contributorBalanceBefore = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT));
-
-    const tx = await instance.withdraw(PRIVATE_SALE_ACCOUNT, { from: PRIVATE_SALE_ACCOUNT });
-    const txCost = await calculateGasCost(tx.receipt.gasUsed);
-
-    const vestingAfter = await instance.vestings(PRIVATE_SALE_ACCOUNT);
-    const contributorBalanceAfter = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT));
-
-    assert.equal(contributorBalanceAfter.toString(), contributorBalanceBefore.add(pht2wei(expectedReleasable).sub(txCost)).toString());
-    assert.equal(vestingAfter[VI.balanceInitial].toString(), vestingBefore[VI.balanceInitial].toString());
-    assert.equal(vestingAfter[VI.balanceRemaining].toString(), vestingBefore[VI.balanceRemaining].sub(pht2wei(expectedReleasable)).toString());
-    assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei(expectedReleasable).toString());
-  });
-
-  it('Should travel 2 months to test periods withdraws', async () => {
-    assert.isFulfilled(timeTravel(20 * 3));
-  });
-
   it('The owner cannot revoke a private contributor vesting', async () => {
     const instance = await Distribution.deployed();
     return assert.isRejected(instance.revokeVestingSchedule(PRIVATE_SALE_ACCOUNT, { from: OWNER_ACCOUNT }));
   });
 
-  it('The private sale contributor can release two more vested periods', async () => {
+  it('The owner cannot use beneficiary with another vesting schedule to update of a private contributor vesting', async () => {
     const instance = await Distribution.deployed();
-    const expectedReleasable = '200';
-    const vestingBefore = await instance.vestings(PRIVATE_SALE_ACCOUNT);
+    return assert.isRejected(instance.updateVestingBeneficiary(PRIVATE_SALE_ACCOUNT, PRIVATE_SALE_ACCOUNT_2, { from: OWNER_ACCOUNT }));
+  });
+
+  it('The private sale contributor can withdraw total vested amount', async () => {
+    const instance = await Distribution.deployed();
+    const expectedReleasable = (PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT).toString();
     const contributorBalanceBefore = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT));
 
     const tx = await instance.withdraw(PRIVATE_SALE_ACCOUNT, { from: PRIVATE_SALE_ACCOUNT });
@@ -130,87 +114,43 @@ contract('Private Sale Contributor', (accounts) => {
     const vestingAfter = await instance.vestings(PRIVATE_SALE_ACCOUNT);
     const contributorBalanceAfter = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT));
 
-    assert.equal(contributorBalanceAfter.toString(), contributorBalanceBefore.add(pht2wei(expectedReleasable).sub(txCost)).toString());
-    assert.equal(vestingAfter[VI.balanceInitial].toString(), vestingBefore[VI.balanceInitial].toString());
-    assert.equal(vestingAfter[VI.balanceRemaining].toString(), vestingBefore[VI.balanceRemaining].sub(pht2wei(expectedReleasable)).toString());
-    assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei('300').toString());
-  });
-
-  it('Should travel 2 months to test periods withdraws', async () => {
-    assert.isFulfilled(timeTravel(30 * 2));
-  });
-
-  it('The private sale contributor can release their vested amount but not bonus', async () => {
-    const instance = await Distribution.deployed();
-    const expectedReleasable = PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT.toString();
-    const contributorBalanceBefore = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT_2));
-
-    const tx = await instance.withdraw(PRIVATE_SALE_ACCOUNT_2, { from: PRIVATE_SALE_ACCOUNT_2 });
-    const txCost = await calculateGasCost(tx.receipt.gasUsed);
-
-    const vestingAfter = await instance.vestings(PRIVATE_SALE_ACCOUNT_2);
-    const contributorBalanceAfter = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT_2));
-
-    assert.equal(contributorBalanceAfter.toString(), contributorBalanceBefore.add(pht2wei(expectedReleasable).sub(txCost)).toString());
     assert.equal(vestingAfter[VI.balanceRemaining].toString(), '0');
-    assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei(PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT.toString()).toString());
-  });
-
-  it('Should travel 1 months to test periods withdraws', async () => {
-    assert.isFulfilled(timeTravel(30));
-  });
-
-  it('The private sale contributor can release 20% of vested bonus', async () => {
-    const instance = await Distribution.deployed();
-    const expectedReleasable = (PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT * 0.20).toString();
-    const contributorBalanceBefore = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT_2));
-
-    const tx = await instance.withdraw(PRIVATE_SALE_ACCOUNT_2, { from: PRIVATE_SALE_ACCOUNT_2 });
-    const txCost = await calculateGasCost(tx.receipt.gasUsed);
-
-    const vestingAfter = await instance.vestings(PRIVATE_SALE_ACCOUNT_2);
-    const contributorBalanceAfter = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT_2));
-
-    assert.equal(contributorBalanceAfter.toString(), contributorBalanceBefore.add(pht2wei(expectedReleasable).sub(txCost)).toString());
-    assert.equal(vestingAfter[VI.bonusRemaining].toString(), pht2wei((PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_BONUS_PHT-expectedReleasable).toString()));
-    assert.equal(vestingAfter[VI.bonusClaimed].toString(), pht2wei(expectedReleasable.toString()));
-  });
-
-  it('The private sale contributor cannot more bonus till next month', async () => {
-    const instance = await Distribution.deployed();
-    const contributorBalanceBefore = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT_2));
-
-    const vestingBefore = await instance.vestings(PRIVATE_SALE_ACCOUNT_2);
-
-    const tx = await instance.withdraw(PRIVATE_SALE_ACCOUNT_2, { from: PRIVATE_SALE_ACCOUNT_2 });
-    const txCost = await calculateGasCost(tx.receipt.gasUsed);
-
-    const vestingAfter = await instance.vestings(PRIVATE_SALE_ACCOUNT_2);
-    const contributorBalanceAfter = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT_2));
-
-    assert.equal(contributorBalanceAfter.toString(), contributorBalanceBefore.sub(txCost).toString());
-    assert.equal(vestingAfter[VI.bonusClaimed].toString(), vestingBefore[VI.bonusClaimed].toString());
-    assert.equal(vestingAfter[VI.bonusRemaining].toString(), vestingBefore[VI.bonusRemaining].toString());
-  });
-
-  it('Should travel 1 months to test periods withdraws', async () => {
-    assert.isFulfilled(timeTravel(30));
-  });
-
-  it('The private sale contributor can release remaining vested bonus', async () => {
-    const instance = await Distribution.deployed();
-    const expectedReleasable = (PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_BONUS_PHT - (PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT * 0.20)).toString();
-    const contributorBalanceBefore = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT_2));
-
-    const tx = await instance.withdraw(PRIVATE_SALE_ACCOUNT_2, { from: PRIVATE_SALE_ACCOUNT_2 });
-    const txCost = await calculateGasCost(tx.receipt.gasUsed);
-
-    const vestingAfter = await instance.vestings(PRIVATE_SALE_ACCOUNT_2);
-    const contributorBalanceAfter = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT_2));
-
-    assert.equal(contributorBalanceAfter.toString(), contributorBalanceBefore.add(pht2wei(expectedReleasable).sub(txCost)).toString());
+    assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei(PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT).toString());
     assert.equal(vestingAfter[VI.bonusRemaining].toString(), '0');
-    assert.equal(vestingAfter[VI.bonusClaimed].toString(), pht2wei(PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_BONUS_PHT));
+    assert.equal(contributorBalanceAfter.toString(), contributorBalanceBefore.add(pht2wei(expectedReleasable).sub(txCost)).toString());
+  });
+
+  it('The private sale contributor is not authorized to release more tokens', async () => {
+    const instance = await Distribution.deployed();
+    return assert.isRejected(instance.withdraw(PRIVATE_SALE_ACCOUNT, { from: PRIVATE_SALE_ACCOUNT }));
+  });
+
+  it('Only the owner can update private contributor vesting beneficiary account', async () => {
+    const instance = await Distribution.deployed();
+    return assert.isRejected(instance.updateVestingBeneficiary(PRIVATE_SALE_ACCOUNT_2, PRIVATE_SALE_ACCOUNT_3, { from: OTHER_ACCOUNT }));
+  });
+
+  it('The owner can update private contributor vesting beneficiary account', async () => {
+    const instance = await Distribution.deployed();
+    await instance.updateVestingBeneficiary(PRIVATE_SALE_ACCOUNT_2, PRIVATE_SALE_ACCOUNT_3, { from: OWNER_ACCOUNT });
+  });
+
+  it('The second private sale contributor, with a new beneficiary address, can withdraw total vested amount, including bonus', async () => {
+    const instance = await Distribution.deployed();
+    const expectedReleasable = (PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT+PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_BONUS_PHT).toString();
+    const contributorBalanceBefore = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT_3));
+
+    const tx = await instance.withdraw(PRIVATE_SALE_ACCOUNT_3, { from: PRIVATE_SALE_ACCOUNT_3 });
+    const txCost = await calculateGasCost(tx.receipt.gasUsed);
+
+    const vestingAfter = await instance.vestings(PRIVATE_SALE_ACCOUNT_3);
+    const contributorBalanceAfter = toBN(await web3.eth.getBalance(PRIVATE_SALE_ACCOUNT_3));
+
+    assert.equal(vestingAfter[VI.balanceRemaining].toString(), '0');
+    assert.equal(vestingAfter[VI.balanceClaimed].toString(), pht2wei(PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_PHT).toString());
+    assert.equal(vestingAfter[VI.bonusRemaining].toString(), '0');
+    assert.equal(vestingAfter[VI.bonusClaimed].toString(), pht2wei(PRIVATE_SALE_CONTRIBUTOR_ALLOCATION_BONUS_PHT).toString());
+    assert.equal(contributorBalanceAfter.toString(), contributorBalanceBefore.add(pht2wei(expectedReleasable).sub(txCost)).toString());
   });
 
   it('The private sale contributor is not authorized to release more tokens', async () => {
