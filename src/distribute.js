@@ -5,41 +5,7 @@ const Web3 = require('web3');
 const Csv = require('./lib/csv');
 const Logger = require('./lib/logger');
 const { Contract, isPrivateSale, isPublicSale, categoryHasScheduledVesting } = require('./lib/contract');
-
-const pht2Wei = (web3, pht) => {
-  return web3.utils.toBN(web3.utils.toWei(pht.toString(), 'ether'));
-};
-
-const transferTo = (web3, logger, { from, to, amountInWei }) => {
-  return new Promise((resolve, reject) => {
-    web3.eth.sendTransaction({
-      from,
-      to,
-      value: amountInWei,
-      gas: 21000
-    }).on('transactionHash', (transactionHash) => {
-      logger.info(`\t\tTransaction Executed: ${transactionHash}`);
-    }).on('confirmation', (confirmationNumber, txReceipt) => {
-      if (typeof txReceipt.status !== 'undefined') {
-        if (txReceipt.status === true || txReceipt.status === '0x1') {
-          logger.logReceipt(txReceipt);
-          resolve(txReceipt);
-        } else {
-          logger.logReceipt(txReceipt);
-          logger.error(new Error("Transaction failed"));
-        }
-      } else {
-        resolve(txReceipt);
-      }
-    }).on('error', (err) => {
-      logger.error(err);
-      reject(err);
-    }).catch(err => {
-      logger.error(err);
-      reject(err);
-    });
-  });
-};
+const { transferTo, pht2Wei } = require('./lib/utils');
 
 const scheduleDistribution = async (contract, { to, purchased, bonus, category }) => {
   const depositedValue = purchased.add(bonus);
@@ -52,7 +18,7 @@ const scheduleDistribution = async (contract, { to, purchased, bonus, category }
   }
 };
 
-const startDistribution = async (config, logger) => {
+const startDistribution = async (config, logger, csvPath) => {
   let totalDistributedPurchasedPht = 0;
   let totalDistributedBonus = 0;
 
@@ -63,16 +29,17 @@ const startDistribution = async (config, logger) => {
     defaultBlock: "latest",
   });
 
-  const csv = await Csv(config.csvPath, logger);
+  const csv = await Csv(csvPath, logger);
+  csv.validateDistributionData();
+
   const contract = await Contract(web3, logger, {
-    projectWallet: config.projectWallet,
-    salesWallet: config.saleWallet,
-  }, {
     contractAddress: config.contractAddress,
-    contractPath: config.contractPath
+    contractPath: config.contractPath,
+    distributionOwner: config.distributionWallet
   });
 
-  const data = csv.getAggregatedData();
+  const data = csv.getAggregatedDistributionData();
+
   for ( let i = 0; i < data.length; i++ ) {
     const distributionItem = data[i];
     logger.logDistribution(i, distributionItem);
@@ -89,13 +56,15 @@ const startDistribution = async (config, logger) => {
         continue;
       }
 
-      logger.info("\t-----------");
-      logger.info(`\tTransferring 1 PHT to ${distributionItem.to}...`);
-      await transferTo(web3, logger, {
-        from: config.projectWallet,
-        to: distributionItem.to,
-        amountInWei: pht2Wei(web3, '1')
-      });
+      try {
+        await transferTo(web3, logger, {
+          from: config.distributionWallet,
+          to: distributionItem.to,
+          amountInWei: pht2Wei(web3, '1')
+        });
+      } catch ( err ) {
+        logger.error(err);
+      }
     }
 
     try {
@@ -124,18 +93,23 @@ const startDistribution = async (config, logger) => {
   }
 };
 
+
+const logger = Logger('Distribution');
+
+if (process.argv.length !== 3) {
+  logger.info("Invalid argument number: node update_vesting.js ${CSV_PATH}");
+}
+
 const config = {
   contractAddress: process.env.CONTRACT_ADDR,
   contractPath: process.env.CONTRACT_PATH,
-  csvPath: process.env.CSV_FILEPATH,
-  projectWallet: process.env.WALLET_PROJECT,
-  saleWallet: process.env.WALLET_SALE,
+  distributionWallet: process.env.DISTRIBUTION_WALLET,
   rpcUrl: process.env.RPC_URL
 };
 
-const logger = Logger();
+const csvPath = process.argv[2];
 
-startDistribution(config, logger)
+startDistribution(config, logger, csvPath)
   .then(({ totalPurchased, totalBonus }) => {
     logger.logFinalOutput(totalPurchased, totalBonus);
     logger.info(`Distribution completed`);

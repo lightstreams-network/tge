@@ -6,9 +6,9 @@
 
 const fs = require('fs');
 
-module.exports = () => {
+module.exports = (prefix = '') => {
   const d = new Date();
-  const logfile = `./logs/${d.toISOString()}`;
+  const logfile = `./logs/${prefix}-${d.toISOString()}`;
   const fd = fs.openSync(logfile, 'w');
 
   const logInfo = (msg) => {
@@ -29,7 +29,7 @@ module.exports = () => {
     if (typeof msg === 'string') {
       fs.writeSync(fd, `[ERROR] ${msg}\n`);
     } else {
-      fs.writeSync(fd, `[ERROR] ${e.stack}\n`);
+      fs.writeSync(fd, `[ERROR] ${msg.stack}\n`);
     }
   };
 
@@ -77,9 +77,10 @@ module.exports = () => {
       logInfo(`\t\tcsvCategory: ${category}`);
     },
     logFinalOutput: (purchasedTotal, bonusTotal) => {
-      logInfo('\n\n ######################### ');
+      logInfo('\n\n #########################');
       logInfo(`   Total purchased distributed tokens: ${purchasedTotal}`);
       logInfo(`   Total bonus distributed tokens: ${bonusTotal}`);
+      logInfo('#########################\n');
     },
     logDistribution: (idx, distribution) => {
       logInfo(`\n[Distribution #${idx}]`);

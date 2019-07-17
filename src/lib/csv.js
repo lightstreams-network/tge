@@ -29,18 +29,47 @@ module.exports = async (csvPath, logger) => {
   logger.info(`Csv ${csvPath} loaded correctly: ${csvData.length} rows`);
 
   return {
-    getAggregatedData: () => {
+    validateUpdateVestingData: () => {
+      if (csvData.length < 1) {
+        throw new Error('Empty CSV file');
+      }
+
+      row = csvData[0];
+      cols = ['from', 'to'];
+      cols.forEach((col) => {
+        if (typeof row[col] === 'undefined') {
+          throw new Error(`Missing "${col}" column`);
+        }
+      });
+    },
+    getCsvData: () => {
+      return csvData;
+    },
+    validateDistributionData: () => {
+      if (csvData.length < 1) {
+        throw new Error('Empty CSV file');
+      }
+
+      row = csvData[0];
+      cols = ['to', 'purchased_pht', 'bonus_pht', 'category'];
+      cols.forEach((col) => {
+        if (typeof row[col] === 'undefined') {
+          throw new Error(`Missing "${col}" column`);
+        }
+      });
+    },
+    getAggregatedDistributionData: () => {
       logger.info(`---------`);
       logger.info(`Staring distribution aggregation...`);
       const data = {};
       const notVestingData = Array();
       for ( let i = 0; i < csvData.length; i++ ) {
         const distributionItem = csvData[i];
-        if (!categoryHasScheduledVesting(distributionItem.category)){
+        if (!categoryHasScheduledVesting(distributionItem.category)) {
           notVestingData.push(distributionItem);
         } else if (typeof data[distributionItem.to] === 'undefined') {
           data[distributionItem.to] = distributionItem;
-        } else if(validateAggregation(data[distributionItem.to].category, distributionItem.category)) {
+        } else if (validateAggregation(data[distributionItem.to].category, distributionItem.category)) {
           logger.info(`Aggregated ${distributionItem.to}: ${data[distributionItem.to].category}, ${distributionItem.category}`);
           data[distributionItem.to].purchased_pht = parseInt(data[distributionItem.to].purchased_pht) + parseInt(distributionItem.purchased_pht);
           data[distributionItem.to].bonus_pht = parseInt(data[distributionItem.to].bonus_pht) + parseInt(distributionItem.bonus_pht);

@@ -1,5 +1,4 @@
 node_modules
-input/distribution_final.csv
 .env
 output.log
 logs/*

@@ -23,6 +23,7 @@ const CATEGORY_SOLIDITY_ENUM_OTHER = 3;
 const CATEGORY_SOLIDITY_ENUM_FUTURE_OFFERING = 4;
 
 const parseContractAbi = (contractPath) => {
+  console.log(`Loading contract abi: ${contractPath}`);
   return JSON.parse(fs.readFileSync(contractPath, 'utf8')).abi;
 };
 
@@ -57,16 +58,14 @@ const handleTxReceipt = (tx, logger, resolve, reject) => {
         resolve(txReceipt);
       } else {
         logger.logReceipt(txReceipt);
-        logger.error(new Error("Transaction failed"));
+        reject(new Error("Transaction failed"));
       }
     } else {
       resolve(txReceipt);
     }
   }).on('error', (err) => {
-    logger.error(err);
     reject(err);
   }).catch(err => {
-    logger.error(err);
     reject(err);
   })
 };
@@ -83,8 +82,8 @@ module.exports.isPublicSale = (csvCategory) => {
   return csvCategory === CATEGORY_CSV_SALE_PUBLIC;
 };
 
-module.exports.Contract = async (web3, logger, { projectWallet, salesWallet }, { contractAddress, contractPath }) => {
-  const gasLimit = '3000000';
+module.exports.Contract = async (web3, logger, { contractAddress, contractPath, distributionOwner }) => {
+  const gasLimit = '1000000';
   const contractInstance = web3.eth.Contract(
     parseContractAbi(contractPath),
     contractAddress
@@ -111,29 +110,38 @@ module.exports.Contract = async (web3, logger, { projectWallet, salesWallet }, {
       });
     },
     schedulePrivateSaleVesting: (to, value, bonus, category) => {
-      logger.logScheduleSale(salesWallet, to, value, category);
+      logger.logScheduleSale(distributionOwner, to, value, category);
       return new Promise((resolve, reject) => {
         const tx = contractInstance.methods.schedulePrivateSaleVesting(to, bonus.toString())
-          .send({ from: salesWallet, value: value, gas: gasLimit });
+          .send({ from: distributionOwner, value: value, gas: gasLimit });
 
         handleTxReceipt(tx, logger, resolve, reject);
       });
     },
     schedulePublicSaleVesting: (to, value, bonus, category) => {
-      logger.logScheduleSale(salesWallet, to, value, category);
+      logger.logScheduleSale(distributionOwner, to, value, category);
       return new Promise((resolve, reject) => {
         const tx = contractInstance.methods.schedulePublicSaleVesting(to, bonus.toString())
-          .send({ from: salesWallet, value: value, gas: gasLimit });
+          .send({ from: distributionOwner, value: value, gas: gasLimit });
 
         handleTxReceipt(tx, logger, resolve, reject);
       });
     },
     scheduleProjectVesting: (to, value, category) => {
       const solidityCategory = csvCategoryToSolidityEnumValue(category);
-      logger.logScheduleProject(projectWallet, to, value, category, solidityCategory);
+      logger.logScheduleProject(distributionOwner, to, value, category, solidityCategory);
       return new Promise((resolve, reject) => {
         const tx = contractInstance.methods.scheduleProjectVesting(to, solidityCategory)
-          .send({ from: projectWallet, value, gas: gasLimit });
+          .send({ from: distributionOwner, value, gas: gasLimit });
+
+        handleTxReceipt(tx, logger, resolve, reject);
+      });
+    },
+    updateVestingBeneficiary: (from, to) => {
+      logger.info(`Updating vesting beneficiary ${from} -> ${to}...`);
+      return new Promise((resolve, reject) => {
+        const tx = contractInstance.methods.updateVestingBeneficiary(from, to)
+          .send({ from: distributionOwner, gas: gasLimit });
 
         handleTxReceipt(tx, logger, resolve, reject);
       });

@@ -62,7 +62,7 @@ module.exports = {
       port: 8545,
       network_id: "163",
       gasPrice: "500000000000",
-      from: "0xc69cf54ee896c8545722d34673370d0f0ffcb964"
+      from: "0x2fee76e336a102a19fc6319215451c7f1d847a5f"
     },
 
     standalone: {
