@@ -8,18 +8,13 @@ const dotenv = require('dotenv');
 dotenv.config({ path: `${process.env.PWD}/.env` });
 
 const Web3 = require('web3');
-const Logger = require('./lib/logger');
-const Csv = require('./lib/csv');
-const { Contract } = require('./lib/contract');
-const { transferTo, pht2Wei } = require('./lib/utils');
+const Logger = require('../lib/logger');
+const Csv = require('../lib/csv');
+const { Contract } = require('../lib/contract');
+const { transferTo, pht2Wei, LoadConfig, web3Cfg } = require('../lib/utils');
 
 const updateVesting = async (config, logger, csvPath) => {
-  const web3 = new Web3(config.rpcUrl, null, {
-    defaultGasPrice: '500000000000',
-    transactionConfirmationBlocks: 1,
-    transactionBlockTimeout: 5,
-    defaultBlock: "latest",
-  });
+  const web3 = new Web3(config.rpcUrl, null, web3Cfg);
 
   const csv = await Csv(csvPath, logger);
   csv.validateUpdateVestingData();
@@ -67,13 +62,6 @@ const updateVesting = async (config, logger, csvPath) => {
   }
 };
 
-const config = {
-  contractAddress: process.env.CONTRACT_ADDR,
-  contractPath: process.env.CONTRACT_PATH,
-  csvPath: process.env.CSV_FILEPATH,
-  distributionWallet: process.env.DISTRIBUTION_WALLET,
-  rpcUrl: process.env.RPC_URL
-};
 
 const logger = Logger('UpdateVesting');
 
@@ -82,6 +70,7 @@ if (process.argv.length !== 3) {
 }
 
 const csvPath = process.argv[2];
+const config = LoadConfig();
 
 updateVesting(config, logger, csvPath)
   .then(() => {

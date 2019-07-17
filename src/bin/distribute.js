@@ -2,10 +2,10 @@ const dotenv = require('dotenv');
 dotenv.config({ path: `${process.env.PWD}/.env` });
 
 const Web3 = require('web3');
-const Csv = require('./lib/csv');
-const Logger = require('./lib/logger');
-const { Contract, isPrivateSale, isPublicSale, categoryHasScheduledVesting } = require('./lib/contract');
-const { transferTo, pht2Wei } = require('./lib/utils');
+const Csv = require('../lib/csv');
+const Logger = require('../lib/logger');
+const { Contract, isPrivateSale, isPublicSale, categoryHasScheduledVesting } = require('../lib/contract');
+const { transferTo, pht2Wei, LoadConfig, web3Cfg } = require('../lib/utils');
 
 const scheduleDistribution = async (contract, { to, purchased, bonus, category }) => {
   const depositedValue = purchased.add(bonus);
@@ -22,12 +22,7 @@ const startDistribution = async (config, logger, csvPath) => {
   let totalDistributedPurchasedPht = 0;
   let totalDistributedBonus = 0;
 
-  const web3 = new Web3(config.rpcUrl, null, {
-    defaultGasPrice: '500000000000',
-    transactionConfirmationBlocks: 1,
-    transactionBlockTimeout: 5,
-    defaultBlock: "latest",
-  });
+  const web3 = new Web3(config.rpcUrl, null, web3Cfg);
 
   const csv = await Csv(csvPath, logger);
   csv.validateDistributionData();
@@ -97,16 +92,10 @@ const startDistribution = async (config, logger, csvPath) => {
 const logger = Logger('Distribution');
 
 if (process.argv.length !== 3) {
-  logger.info("Invalid argument number: node update_vesting.js ${CSV_PATH}");
+  logger.info("Invalid argument number: node distribute.js ${CSV_PATH}");
 }
 
-const config = {
-  contractAddress: process.env.CONTRACT_ADDR,
-  contractPath: process.env.CONTRACT_PATH,
-  distributionWallet: process.env.DISTRIBUTION_WALLET,
-  rpcUrl: process.env.RPC_URL
-};
-
+const config = LoadConfig();
 const csvPath = process.argv[2];
 
 startDistribution(config, logger, csvPath)

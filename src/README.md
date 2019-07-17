@@ -1,8 +1,15 @@
 # Lightstreams TGE Distribution Script
 
+## Install
+
+```
+npm i
+```
+
 ## Usage
 
 
+Initial setup of environment:
 1. Copy `.env.sample` to `.env` and configure the values
 1. Compile the smart contracts `cd ..; npm run compile`
 1. Update the **CONTRACT_ADDR**
@@ -12,18 +19,19 @@
 
 Execute:
 ```
-$> node distribute.js ${CSV_PATH}
+$> node ./bin/distribute.js ${CSV_PATH}
 ```
 
 ### Vesting beneficiary update
 
 Execute:
 ```
-$> node update_vesting.js ${CSV_PATH}
+$> node ./bin/update_vesting.js ${CSV_PATH}
 ```
 
-## Install
+### Transfer Distribution SC ownership
 
+Execute:
 ```
-npm i
+$> node ./bin/update_vesting.js ${NEW_OWNER}
 ```

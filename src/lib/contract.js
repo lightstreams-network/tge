@@ -145,6 +145,15 @@ module.exports.Contract = async (web3, logger, { contractAddress, contractPath, 
 
         handleTxReceipt(tx, logger, resolve, reject);
       });
-    }
+    },
+    transferOwnership: (newOwner) => {
+      logger.info(`Updating smart contract ownership from ${distributionOwner} to ${newOwner}...`);
+      return new Promise((resolve, reject) => {
+        const tx = contractInstance.methods.transferOwnership(newOwner)
+          .send({ from: distributionOwner, gas: gasLimit });
+
+        handleTxReceipt(tx, logger, resolve, reject);
+      });
+    },
   }
 };

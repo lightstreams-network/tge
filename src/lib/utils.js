@@ -40,3 +40,19 @@ module.exports.transferTo = (web3, logger, { from, to, amountInWei }) => {
     });
   });
 };
+
+module.exports.web3Cfg = {
+  defaultGasPrice: '500000000000',
+  transactionConfirmationBlocks: 1,
+  transactionBlockTimeout: 5,
+  defaultBlock: "latest",
+};
+
+module.exports.LoadConfig = () => {
+  return {
+    contractAddress: process.env.CONTRACT_ADDR,
+    contractPath: process.env.CONTRACT_PATH,
+    distributionWallet: process.env.DISTRIBUTION_WALLET,
+    rpcUrl: process.env.RPC_URL
+  };
+};
