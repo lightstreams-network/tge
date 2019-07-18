@@ -33,5 +33,5 @@ $> node ./bin/update_vesting.js ${CSV_PATH}
 
 Execute:
 ```
-$> node ./bin/update_vesting.js ${NEW_OWNER}
+$> node ./bin/transfer_ownership.js ${NEW_OWNER}
 ```

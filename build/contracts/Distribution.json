@@ -15711,7 +15711,7 @@
       },
       "links": {},
       "address": "0x066Fa1bC2cf492016557c962f5c51C3a1C8F79C5",
-      "transactionHash": "0xdac11899948d5229c180c2eb44074bafb9709d92cc8a7a3dc8674790c670ba3a"
+      "transactionHash": "0x9a1cb47a6c759618b213224b887bdff4fe92316e090b81459e3a11bbdf115535"
     },
     "162": {
       "events": {},
@@ -15727,7 +15727,7 @@
     }
   },
   "schemaVersion": "3.0.6",
-  "updatedAt": "2019-07-17T14:03:52.358Z",
+  "updatedAt": "2019-07-18T06:54:32.447Z",
   "devdoc": {
     "methods": {
       "constructor": {
