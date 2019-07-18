@@ -19,8 +19,10 @@ const scheduleDistribution = async (contract, { to, purchased, bonus, category }
 };
 
 const startDistribution = async (config, logger, csvPath) => {
-  let totalDistributedPurchasedPht = 0;
-  let totalDistributedBonus = 0;
+  let totalPurchasedFromSale = 0;
+  let totalBonusFromSale = 0;
+  let totalPurchasedFromProject = 0;
+  let totalBonusFromProject = 0;
 
   const web3 = new Web3(config.rpcUrl, null, web3Cfg);
 
@@ -75,16 +77,24 @@ const startDistribution = async (config, logger, csvPath) => {
         logger.logVesting(vestingData);
       }
 
-      totalDistributedPurchasedPht += parseInt(distributionItem.purchased_pht);
-      totalDistributedBonus += parseInt(distributionItem.bonus_pht);
+      if(isPublicSale(distributionItem.category) || isPrivateSale(distributionItem.category)) {
+        totalPurchasedFromSale += parseInt(distributionItem.purchased_pht);
+        totalBonusFromSale += parseInt(distributionItem.bonus_pht);
+      } else {
+        totalPurchasedFromProject += parseInt(distributionItem.purchased_pht);
+        totalBonusFromProject += parseInt(distributionItem.bonus_pht);
+      }
+
     } catch (err) {
       logger.error(err);
     }
   }
 
   return {
-    totalPurchased: totalDistributedPurchasedPht,
-    totalBonus: totalDistributedBonus
+    totalPurchasedFromSale: totalPurchasedFromSale,
+    totalBonusFromSale: totalBonusFromSale,
+    totalPurchasedFromProject: totalPurchasedFromProject,
+    totalBonusFromProject: totalBonusFromProject
   }
 };
 
@@ -99,8 +109,8 @@ const config = LoadConfig();
 const csvPath = process.argv[2];
 
 startDistribution(config, logger, csvPath)
-  .then(({ totalPurchased, totalBonus }) => {
-    logger.logFinalOutput(totalPurchased, totalBonus);
+  .then((result) => {
+    logger.logFinalOutput(result);
     logger.info(`Distribution completed`);
   })
   .catch(err => {

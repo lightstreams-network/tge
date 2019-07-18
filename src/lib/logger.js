@@ -76,10 +76,9 @@ module.exports = (prefix = '') => {
       logInfo(`\t\tvalue: ${value}`);
       logInfo(`\t\tcsvCategory: ${category}`);
     },
-    logFinalOutput: (purchasedTotal, bonusTotal) => {
-      logInfo('\n\n #########################');
-      logInfo(`   Total purchased distributed tokens: ${purchasedTotal}`);
-      logInfo(`   Total bonus distributed tokens: ${bonusTotal}`);
+    logFinalOutput: (finalResult) => {
+      logInfo('\n\n#########################');
+      logInfo(`   ${JSON.stringify(finalResult)}`);
       logInfo('#########################\n');
     },
     logDistribution: (idx, distribution) => {

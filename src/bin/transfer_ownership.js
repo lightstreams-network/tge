@@ -32,7 +32,7 @@ const transferOwnership = async (config, logger, newOwner) => {
   }
 };
 
-const logger = Logger('UpdateVesting');
+const logger = Logger('TransferOwnership');
 
 if (process.argv.length !== 3) {
   logger.info("Invalid argument number: node transfer_ownership.js ${NEW_OWNER}");

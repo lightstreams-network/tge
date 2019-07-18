@@ -1,0 +1,28 @@
+---------
+Csv input/update_beneficiary_sample.csv loaded correctly: 1 rows
+Distribution contract loaded correctly at 0x17c1fD9c1c65eB1D782c0dB07206C62989120084
+	 Address: 0x17c1fD9c1c65eB1D782c0dB07206C62989120084
+	 Owner: 0x2FEE76E336a102a19FC6319215451c7F1D847a5F
+	-----------
+	Vesting:
+		startTimestamp: 2019-07-18T09:44:56.000Z
+		endTimestamp: 2019-07-18T09:44:56.000Z
+		balanceInitial: 66151000000000000000000
+		bonusInitial: 11634000000000000000000
+		revocable: false
+	-----------
+	-----------
+	Transferring 1000000000000000000 wei to 0xebC018d1A3bCEEA8d14781fCc4294C626654E872...
+		Transaction Executed: 0x02d29e4b4f0cee8822004b92b1ca471b306c889735587d7a405a227cba9a3028
+	Transferred 1000000000000000000 wei to 0xebC018d1A3bCEEA8d14781fCc4294C626654E872
+	-----------
+	TX Receipt:
+		status: true
+		hash: 0x02d29e4b4f0cee8822004b92b1ca471b306c889735587d7a405a227cba9a3028
+Updating vesting beneficiary 0xd5552aaEec4F69F81e620623709EEa0AFc6B5ada -> 0xebC018d1A3bCEEA8d14781fCc4294C626654E872...
+	Transaction Executed: 0xe7ba30c0084eac6b215193399957b6e6c896269a70f53f204b95c2aad4b91707
+	-----------
+	TX Receipt:
+		status: true
+		hash: 0xe7ba30c0084eac6b215193399957b6e6c896269a70f53f204b95c2aad4b91707
+Update vesting beneficiaries completed!
