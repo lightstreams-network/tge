@@ -37,12 +37,19 @@ const updateVesting = async (config, logger, csvPath) => {
       throw new Error(`Invalid ethereum address ${item.to}`);
     }
 
-    const existingVestingData = await contract.vestingExists(item.from);
-    if (existingVestingData.startTimestamp.toString() === "0") {
-      logger.error(`There is not active vesting for ${item.from}`);
+    const existingFromVestingData = await contract.vestingExists(item.from);
+    if (existingFromVestingData.startTimestamp.toString() === "0") {
+      logger.error(`There is not active vesting schedule for ${item.from}`);
       continue;
     } else {
-      logger.logVesting(existingVestingData);
+      logger.logVesting(existingFromVestingData);
+    }
+
+    const existingToVestingData = await contract.vestingExists(item.to);
+    if (existingToVestingData.startTimestamp.toString() !== "0") {
+      logger.error(`There is already a vesting schedule for ${item.to}`);
+      logger.logVesting(existingToVestingData);
+      continue;
     }
 
     try {
