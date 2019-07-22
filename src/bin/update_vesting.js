@@ -28,6 +28,7 @@ const updateVesting = async (config, logger, csvPath) => {
   const data = csv.getCsvData();
   for ( let i = 0; i < data.length; i++ ) {
     const item = data[i];
+    logger.logUpdateBeneficiary(i, item);
     if (!web3.utils.isAddress(item.from)) {
       throw new Error(`Invalid ethereum address ${item.from}`);
     }

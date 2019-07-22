@@ -89,6 +89,12 @@ module.exports = (prefix = '') => {
       logInfo(`category: ${distribution.category}`);
       logInfo(`\n`);
     },
+    logUpdateBeneficiary: (idx, update) => {
+      logInfo(`\n[Update Beneficiary #${idx}]`);
+      logInfo(`from: ${update.from}`);
+      logInfo(`to: ${update.to}`);
+      logInfo(`\n`);
+    },
     logVesting: (vestingData) => {
       logInfo("\t-----------");
       logInfo("\tVesting:");
